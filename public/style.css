@@ -69,7 +69,7 @@ select { accent-color: var(--accent); }
 
 @supports (appearance: base-select) and selector(::picker(select)) {
   select, select::picker(select) { appearance: base-select; }
-  select { background-image: none; padding-inline-end: 12px; }
+  select { align-items: center; background-image: none; padding-inline-end: 12px; }
   select::picker-icon { color: var(--accent); }
   select::picker(select) { max-height: min(320px, 50dvh); border: 1px solid #b9cdbf; border-radius: 8px; background: #fff; color: #254737; }
   select option { padding: 9px 12px; }
