@@ -24,9 +24,10 @@ Copy `.env.example` to `.env` and set `APIFY_TOKEN` to a token from [Apify accou
 | `APP_PASSWORD` | Shared password for app sign-in. Optional on loopback and required on Railway. |
 | `PORT` | HTTP port. Defaults to 3000 locally. |
 
-## Deploy on Railway
+## Deployment guides
 
-Connect a fork of this repository to a Railway service and configure `APIFY_TOKEN` and a strong `APP_PASSWORD` in the service variables. Railway supplies `PORT`. Add an HTTPS domain for browser access and use the configured password to sign in.
+- [Run locally](docs/deploy-local.md) covers setup on Windows, macOS, and Linux, optional sign-in, and a first search.
+- [Deploy on Railway](docs/deploy-railway.md) covers GitHub autodeploys, service variables, HTTPS, and troubleshooting.
 
 ## Usage and development
 
