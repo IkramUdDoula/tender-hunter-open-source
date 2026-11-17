@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browse live Bangladesh e-GP tenders by ministry and procurement type.">
+  <title>Tender Hunter</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&display=swap">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell masthead-inner">
+      <a class="brand" href="/"><span class="brand-icon" aria-hidden="true"></span>Tender Hunter</a>
+      <div class="masthead-actions">
+        <a class="source" href="https://www.eprocure.gov.bd/" target="_blank" rel="noopener noreferrer">Bangladesh e-GP <span aria-hidden="true">↗</span></a>
+        <form id="sign-out" method="post" action="/logout" hidden><button class="sign-out" type="submit">Sign out</button></form>
+      </div>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">Tender Hunter</h1>
+        <p>Browse open tenders from Bangladesh’s e-GP portal.</p>
+      </div>
+      <aside class="usage" aria-labelledby="usage-title">
+        <div class="usage-header">
+          <h2 id="usage-title">Apify usage</h2>
+          <a href="https://console.apify.com/billing/subscription" target="_blank" rel="noopener noreferrer">Billing &amp; payments <span aria-hidden="true">↗</span></a>
+        </div>
+        <div aria-live="polite">
+          <div id="usage-amount" class="usage-amount">Loading usage…</div>
+          <div id="usage-cycle" class="usage-cycle" hidden></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="results" aria-label="Tender results">
+      <form class="toolbar" id="search-form">
+        <div class="filter">
+          <label for="ministry">Ministry</label>
+          <select id="ministry" required disabled>
+            <option value="" disabled selected>Select a ministry</option>
+            <option value="all">All ministries</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="procurementNature">Procurement nature</label>
+          <select id="procurementNature" disabled>
+            <option value="">All types</option>
+            <option value="services">Services</option>
+            <option value="physicalServices">Physical services</option>
+            <option value="goods">Goods</option>
+            <option value="works">Works</option>
+          </select>
+        </div>
+        <button class="primary" id="load" type="submit" disabled>Search tenders</button>
+      </form>
+      <section class="quick-filters" aria-labelledby="quick-filters-title">
+        <div class="quick-filter-heading">
+          <h2 id="quick-filters-title">Quick filters</h2>
+          <button class="secondary" id="manage-filters" type="button" disabled>Manage quick filters</button>
+        </div>
+        <div class="quick-filter-chips" id="quick-filter-chips"></div>
+        <div class="active-filter" id="active-filter" hidden>
+          <span id="active-filter-details"></span>
+          <button class="secondary" id="clear-filter" type="button">Clear quick filter</button>
+        </div>
+      </section>
+      <div class="table-scroll" role="region" aria-label="Tender notices table" tabindex="0">
+        <table>
+          <colgroup>
+            <col class="col-id"><col class="col-title"><col class="col-nature"><col class="col-method">
+            <col class="col-ministry"><col class="col-org"><col class="col-entity">
+            <col class="col-date"><col class="col-date"><col class="col-status"><col class="col-url">
+          </colgroup>
+          <thead><tr>
+            <th scope="col">ID</th><th scope="col">Title</th><th scope="col">Nature</th>
+            <th scope="col">Method label</th><th scope="col">Ministry</th><th scope="col">Organization</th>
+            <th scope="col">Procuring entity</th><th scope="col">Published date</th><th scope="col">Closing date</th>
+            <th scope="col">Status</th><th scope="col">URL</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="message" id="message" role="status">Choose a ministry to search for tenders.</div>
+      <footer class="results-footer">
+        <p id="summary" aria-live="polite">20 per page</p>
+        <nav class="pagination" aria-label="Tender result pages">
+          <button id="previous" type="button" disabled>Previous</button>
+          <span id="page-number" aria-live="polite">Page —</span>
+          <button id="next" type="button" disabled>Next</button>
+        </nav>
+      </footer>
+      <p id="cap" class="cap" role="status" hidden></p>
+    </section>
+    <footer class="source-footer"><span>Source <a href="https://apify.com/a-g-d/bd-egp" target="_blank" rel="noopener noreferrer">Apify e-GP actor ↗</a></span><span>Dates and times in Bangladesh time (UTC+6)</span></footer>
+  </main>
+  <dialog class="filter-dialog" id="filter-dialog" aria-labelledby="filter-dialog-title">
+    <div class="dialog-heading">
+      <h2 id="filter-dialog-title">Manage quick filters</h2>
+      <button class="secondary" id="close-filters" type="button">Done</button>
+    </div>
+    <div class="dialog-content">
+      <form class="dialog-form" id="quick-filter-form">
+        <div class="filter wide-filter">
+          <label for="quick-name">Shortcut name <span>(optional)</span></label>
+          <input id="quick-name" name="name" type="text" maxlength="80">
+        </div>
+        <div class="filter">
+          <label for="quick-ministry">Ministry</label>
+          <select id="quick-ministry" name="ministry" required autofocus></select>
+        </div>
+        <div class="filter">
+          <label for="quick-nature">Procurement nature</label>
+          <select id="quick-nature" name="procurementNature"></select>
+        </div>
+        <div class="filter">
+          <label for="quick-keyword">Keyword</label>
+          <input id="quick-keyword" name="keyword" type="text" maxlength="200">
+        </div>
+        <div class="filter">
+          <label for="quick-organization">Organization or procuring entity</label>
+          <input id="quick-organization" name="organization" type="text" maxlength="200">
+        </div>
+        <div class="filter">
+          <label for="quick-method">Procurement method</label>
+          <select id="quick-method" name="method"><option value="">All methods</option></select>
+        </div>
+        <div class="filter">
+          <label for="quick-published">Published since</label>
+          <input id="quick-published" name="publishedSince" type="text" maxlength="80" placeholder="e.g. 7 days or 2026-11-01">
+        </div>
+        <button class="primary" type="submit">Save quick filter</button>
+      </form>
+      <p class="filter-feedback" id="filter-feedback" role="status" hidden></p>
+      <ul class="saved-filters" id="saved-filters" aria-label="Saved quick filters"></ul>
+    </div>
+  </dialog>
+</body>
+</html>
