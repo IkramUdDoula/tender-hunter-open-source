@@ -3,11 +3,11 @@
 ## Search for tenders
 
 1. Sign in with the app password if the instance asks for it.
-2. Select a ministry or **All ministries**. Optionally select a procurement nature.
-3. Click **Search tenders**. A new search collects results from Apify. Repeating the same criteria in the same browser within six hours uses the saved results. The footer shows when a cached result was saved.
+2. Select one or more ministries or choose **All ministries** for a single broad search. Optionally select a procurement nature.
+3. Click **Search tenders**. The progress bar shows which ministry is loading. Results appear as each ministry finishes and stay available if another search fails. The browser reuses saved results when the search criteria for a ministry match a completed search from the past six hours. The footer identifies cached results.
 4. Use **Next** and **Previous** to browse 20 notices at a time. Select **Open** in the URL column to view the official notice. On a narrow screen, scroll the table horizontally for the remaining columns.
 
-Dates and times in the table use Bangladesh time. The search covers live notices. If the app reaches the configured run cap, a narrower search can surface more relevant results.
+Dates and times in the table use Bangladesh time. The search covers live notices. The configured run cap applies to each Apify search. Multiple uncached ministry searches can increase Apify usage.
 
 ## Filter search results
 
@@ -17,7 +17,7 @@ Select an applied filter above the table to edit or clear it. Select **Clear col
 
 ## Save a quick filter
 
-Open **Manage quick filters**. Choose a ministry and procurement nature, then optionally add a shortcut name, keyword, organization or procuring entity, procurement method, or publication window. For **Published since**, enter a relative value such as `7 days` or a date such as `2026-11-01`.
+Open **Manage quick filters**. Choose one or more ministries and a procurement nature, then optionally add a shortcut name, keyword, organization or procuring entity, procurement method, or publication window. For **Published since**, enter a relative value such as `7 days` or a date such as `2026-11-01`.
 
 Select **Save quick filter**, then **Done**. Selecting the shortcut searches with its saved criteria and uses the browser cache when available. Use **Clear quick filter** to return to the visible dropdown criteria or **Remove** in the popup to delete a shortcut. Shortcuts stay in the browser where they were saved.
 

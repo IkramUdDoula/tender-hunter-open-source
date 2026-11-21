@@ -257,10 +257,12 @@ export function createColumnFilters(onChange) {
 
   updateControls();
   return {
-    setResults(results) {
+    setResults(results, reset = false) {
+      const needsUpdate = reset || Boolean(results.length) !== Boolean(tenders.length);
       tenders = results;
-      filters.clear();
-      updateControls();
+      if (reset) filters.clear();
+      if (needsUpdate) updateControls();
+      return matchingRows();
     },
   };
 }

@@ -41,11 +41,9 @@
     <section class="results" aria-label="Tender results">
       <form class="toolbar" id="search-form">
         <div class="filter">
-          <label for="ministry">Ministry</label>
-          <select id="ministry" required disabled>
-            <option value="" disabled selected>Select a ministry</option>
-            <option value="all">All ministries</option>
-          </select>
+          <label id="ministry-label" for="ministry">Ministries</label>
+          <button id="ministry" class="ministry-toggle" type="button" aria-expanded="false" aria-controls="ministry-options" aria-labelledby="ministry-label ministry" disabled>Select ministries</button>
+          <div id="ministry-options" class="ministry-options" role="group" aria-labelledby="ministry-label" hidden></div>
         </div>
         <div class="filter">
           <label for="procurementNature">Procurement nature</label>
@@ -70,6 +68,11 @@
           <button class="secondary" id="clear-filter" type="button">Clear quick filter</button>
         </div>
       </section>
+      <div id="search-progress" class="search-progress" hidden>
+        <span id="search-progress-label" role="status"></span>
+        <progress id="search-progress-bar" aria-label="Tender search progress" aria-describedby="search-progress-label" value="0" max="1"></progress>
+      </div>
+      <p id="search-failures" class="search-failures" role="status" hidden></p>
       <div class="column-filter-bar" id="column-filter-bar" role="group" aria-label="Applied column filters" hidden>
         <div class="quick-filter-chips" id="column-filter-chips"></div>
         <button class="secondary" id="clear-column-filters" type="button">Clear column filters</button>
@@ -97,7 +100,7 @@
           <tbody id="rows"></tbody>
         </table>
       </div>
-      <div class="message" id="message" role="status">Choose a ministry to search for tenders.</div>
+      <div class="message" id="message" role="status">Choose ministries to search for tenders.</div>
       <footer class="results-footer">
         <div>
           <p id="summary" aria-live="polite">20 per page</p>
@@ -125,8 +128,9 @@
           <input id="quick-name" name="name" type="text" maxlength="80">
         </div>
         <div class="filter">
-          <label for="quick-ministry">Ministry</label>
-          <select id="quick-ministry" name="ministry" required autofocus></select>
+          <label id="quick-ministry-label" for="quick-ministry">Ministries</label>
+          <button id="quick-ministry" class="ministry-toggle" type="button" aria-expanded="false" aria-controls="quick-ministry-options" aria-labelledby="quick-ministry-label quick-ministry" autofocus>Select ministries</button>
+          <div id="quick-ministry-options" class="ministry-options" role="group" aria-labelledby="quick-ministry-label" hidden></div>
         </div>
         <div class="filter">
           <label for="quick-nature">Procurement nature</label>
@@ -148,7 +152,7 @@
           <label for="quick-published">Published since</label>
           <input id="quick-published" name="publishedSince" type="text" maxlength="80" placeholder="e.g. 7 days or 2026-11-01">
         </div>
-        <button class="primary" type="submit">Save quick filter</button>
+        <button class="primary" id="save-quick-filter" type="submit" disabled>Save quick filter</button>
       </form>
       <p class="filter-feedback" id="filter-feedback" role="status" hidden></p>
       <ul class="saved-filters" id="saved-filters" aria-label="Saved quick filters"></ul>

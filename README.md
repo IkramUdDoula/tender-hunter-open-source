@@ -2,7 +2,7 @@
 
 Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tender notices. It searches the [Bangladesh e-GP actor on Apify](https://apify.com/a-g-d/bd-egp) and links results to their official notices.
 
-- Browse by ministry or across all ministries, with an optional procurement nature.
+- Select one or more ministries or search across all ministries, with an optional procurement nature. Results appear as each search finishes.
 - Save named quick filters with keywords, organizations, procuring entities, methods, and publication windows.
 - Filter the full result set from its column headers and reuse identical searches in the same browser for six hours.
 - View 20 notices per page and track your Apify account usage from the app.
