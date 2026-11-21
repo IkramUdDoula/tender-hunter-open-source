@@ -70,6 +70,10 @@
           <button class="secondary" id="clear-filter" type="button">Clear quick filter</button>
         </div>
       </section>
+      <div class="column-filter-bar" id="column-filter-bar" role="group" aria-label="Applied column filters" hidden>
+        <div class="quick-filter-chips" id="column-filter-chips"></div>
+        <button class="secondary" id="clear-column-filters" type="button">Clear column filters</button>
+      </div>
       <div class="table-scroll" role="region" aria-label="Tender notices table" tabindex="0">
         <table>
           <colgroup>
@@ -78,17 +82,27 @@
             <col class="col-date"><col class="col-date"><col class="col-status"><col class="col-url">
           </colgroup>
           <thead><tr>
-            <th scope="col">ID</th><th scope="col">Title</th><th scope="col">Nature</th>
-            <th scope="col">Method label</th><th scope="col">Ministry</th><th scope="col">Organization</th>
-            <th scope="col">Procuring entity</th><th scope="col">Published date</th><th scope="col">Closing date</th>
-            <th scope="col">Status</th><th scope="col">URL</th>
+            <th scope="col" data-filter="id" data-filter-type="text">ID</th>
+            <th scope="col" data-filter="title" data-filter-type="text">Title</th>
+            <th scope="col" data-filter="nature" data-filter-type="values">Nature</th>
+            <th scope="col" data-filter="methodLabel" data-filter-type="values">Method label</th>
+            <th scope="col" data-filter="ministry" data-filter-type="values">Ministry</th>
+            <th scope="col" data-filter="organization" data-filter-type="values">Organization</th>
+            <th scope="col" data-filter="procuringEntity" data-filter-type="values">Procuring entity</th>
+            <th scope="col" data-filter="publishedAt" data-filter-type="date">Published date</th>
+            <th scope="col" data-filter="closingAt" data-filter-type="date">Closing date</th>
+            <th scope="col" data-filter="status" data-filter-type="values">Status</th>
+            <th scope="col">URL</th>
           </tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
       <div class="message" id="message" role="status">Choose a ministry to search for tenders.</div>
       <footer class="results-footer">
-        <p id="summary" aria-live="polite">20 per page</p>
+        <div>
+          <p id="summary" aria-live="polite">20 per page</p>
+          <p id="cache-note" hidden></p>
+        </div>
         <nav class="pagination" aria-label="Tender result pages">
           <button id="previous" type="button" disabled>Previous</button>
           <span id="page-number" aria-live="polite">Page —</span>
@@ -140,5 +154,23 @@
       <ul class="saved-filters" id="saved-filters" aria-label="Saved quick filters"></ul>
     </div>
   </dialog>
+  <dialog class="filter-dialog column-filter-dialog" id="column-filter-dialog" aria-labelledby="column-filter-title">
+    <div class="dialog-heading">
+      <h2 id="column-filter-title">Filter column</h2>
+      <button class="secondary" id="cancel-column-filter" type="button">Cancel</button>
+    </div>
+    <form id="column-filter-form">
+      <div class="dialog-content" id="column-filter-content"></div>
+      <div class="column-filter-actions">
+        <button class="secondary" id="clear-column-filter" type="button" hidden>Clear filter</button>
+        <button class="primary" id="apply-column-filter" type="submit">Apply filter</button>
+      </div>
+    </form>
+  </dialog>
+  <template id="column-filter-icon">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+      <path d="M2 3h12L9.5 8v4l-3 1V8z"></path>
+    </svg>
+  </template>
 </body>
 </html>

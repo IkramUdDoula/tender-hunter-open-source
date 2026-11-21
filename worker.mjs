@@ -1,5 +1,7 @@
 const api = 'https://api.apify.com/v2';
 const pageSize = 20;
+const batchSize = 500;
+const tenderFields = 'tenderId,title,procurementNatureLabel,procurementNature,methodLabel,ministry,organization,procuringEntity,publishedAt,closingAt,status,detailUrl';
 const searchLifetime = 60 * 60 * 1000;
 const searches = new Map();
 const procurementNatures = new Set(['goods', 'works', 'services', 'physicalServices']);
@@ -113,19 +115,23 @@ async function prepareDataset(token, search) {
   return true;
 }
 
-async function readFilteredPage(token, datasetId, positions) {
+async function readFilteredPage(token, datasetId, positions, size) {
   const ranges = [];
   for (const position of positions) {
     const range = ranges.at(-1);
-    if (range && position - range.offset < pageSize) range.positions.push(position);
+    if (range && position - range.offset < size) range.positions.push(position);
     else ranges.push({ offset: position, positions: [position] });
   }
 
-  const pages = await Promise.all(ranges.map(async ({ offset, positions }) => {
-    const { items } = await datasetItems(token, datasetId, { offset, limit: positions.at(-1) - offset + 1 });
-    return positions.map(position => items[position - offset]);
-  }));
-  return pages.flat();
+  const notices = [];
+  for (let start = 0; start < ranges.length; start += 4) {
+    const pages = await Promise.all(ranges.slice(start, start + 4).map(async ({ offset, positions }) => {
+      const { items } = await datasetItems(token, datasetId, { offset, limit: positions.at(-1) - offset + 1, fields: tenderFields });
+      return positions.map(position => items[position - offset]);
+    }));
+    notices.push(...pages.flat());
+  }
+  return notices;
 }
 
 function mapTender(item) {
@@ -144,21 +150,21 @@ function mapTender(item) {
   };
 }
 
-async function getPage(token, searchId, page) {
+async function getPage(token, searchId, page, size) {
   const search = searches.get(searchId);
   if (!search || Date.now() >= search.expiresAt) {
     searches.delete(searchId);
     throw new RequestError('This search expired. Search again to load new results.', 404);
   }
-  if (!Number.isSafeInteger(page) || page < 1 || page > Math.ceil(search.limit / pageSize)) {
+  if (!Number.isSafeInteger(page) || page < 1 || page > Math.ceil(search.limit / size)) {
     throw new RequestError('Invalid page number.', 400);
   }
   if (!search.datasetId && !await prepareDataset(token, search)) return null;
 
-  const offset = (page - 1) * pageSize;
+  const offset = (page - 1) * size;
   if (!search.ministry) {
-    const limit = Math.min(pageSize, search.limit - offset);
-    const { items, total } = await datasetItems(token, search.datasetId, { offset, limit });
+    const limit = Math.min(size, search.limit - offset);
+    const { items, total } = await datasetItems(token, search.datasetId, { offset, limit, fields: tenderFields });
     return {
       tenders: items.map(mapTender),
       page,
@@ -167,7 +173,7 @@ async function getPage(token, searchId, page) {
     };
   }
 
-  const items = await readFilteredPage(token, search.datasetId, search.positions.slice(offset, offset + pageSize));
+  const items = await readFilteredPage(token, search.datasetId, search.positions.slice(offset, offset + size), size);
   return {
     tenders: items.map(mapTender),
     page,
@@ -213,7 +219,8 @@ export default {
       if (!env.APIFY_TOKEN) return json({ error: 'Set APIFY_TOKEN on the server to search tenders.' }, 503);
       try {
         if (!searchId) return json(await startSearch(env.APIFY_TOKEN, searchParams, maxItems(env.APIFY_MAX_ITEMS)), 202);
-        const page = await getPage(env.APIFY_TOKEN, searchId, Number(searchParams.get('page') ?? 1));
+        const size = searchParams.get('view') === 'batch' ? batchSize : pageSize;
+        const page = await getPage(env.APIFY_TOKEN, searchId, Number(searchParams.get('page') ?? 1), size);
         return page ? json(page) : json({ status: 'loading' }, 202);
       } catch (error) {
         if (error instanceof RequestError) return json({ error: error.message }, error.status);

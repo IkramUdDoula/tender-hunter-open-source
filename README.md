@@ -4,6 +4,7 @@ Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tend
 
 - Browse by ministry or across all ministries, with an optional procurement nature.
 - Save named quick filters with keywords, organizations, procuring entities, methods, and publication windows.
+- Filter the full result set from its column headers and reuse identical searches in the same browser for six hours.
 - View 20 notices per page and track your Apify account usage from the app.
 
 ## Quick start
@@ -26,11 +27,12 @@ Copy `.env.example` to `.env` and set `APIFY_TOKEN` to a token from [Apify accou
 
 ## Deployment guides
 
+- [Deploy with an AI agent](AGENTS.md) covers a copyable prompt, setup, verification, and optional Apify MCP access.
 - [Run locally](docs/deploy-local.md) covers setup on Windows, macOS, and Linux, optional sign-in, and a first search.
 - [Deploy on Railway](docs/deploy-railway.md) covers GitHub autodeploys, service variables, HTTPS, and troubleshooting.
 
 ## Usage and development
 
-See the [usage guide](docs/usage.md) for search, shortcuts, and common errors. The app uses a Node.js HTTP server and browser-native HTML, CSS, and JavaScript. `npm run build` bundles the app into `dist/`. Tender search sessions live in server memory, and saved quick filters live in the browser.
+See the [usage guide](docs/usage.md) for search, shortcuts, and common errors. The app uses a Node.js HTTP server and browser-native HTML, CSS, and JavaScript. `npm run build` bundles the app into `dist/`. Active Apify runs are tracked in server memory. Completed results and saved quick filters live in the browser.
 
 The application code is available under the [MIT License](LICENSE). The tender notices come from [Bangladesh e-GP](https://www.eprocure.gov.bd/). Apify runs are subject to your account’s usage limits and pricing.

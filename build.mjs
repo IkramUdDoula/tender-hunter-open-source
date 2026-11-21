@@ -5,6 +5,8 @@ const files = {
   '/': ['index.html', 'text/html'],
   '/style.css': ['style.css', 'text/css'],
   '/app.js': ['app.js', 'text/javascript'],
+  '/column-filters.js': ['column-filters.js', 'text/javascript'],
+  '/search-cache.js': ['search-cache.js', 'text/javascript'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
 };
 

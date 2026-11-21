@@ -1,3 +1,6 @@
+import { createColumnFilters } from './column-filters.js';
+import { cachedSearch } from './search-cache.js';
+
 const pageSize = 20;
 const locale = { timeZone: 'Asia/Dhaka' };
 const dateFormat = new Intl.DateTimeFormat('en-GB', { ...locale, day: '2-digit', month: 'short', year: 'numeric' });
@@ -25,13 +28,21 @@ const message = byId('message');
 const previous = byId('previous');
 const next = byId('next');
 const cap = byId('cap');
+const cacheNote = byId('cache-note');
 
-let searchId;
 let result;
+let visibleTenders = [];
+let page = 1;
+let filtered = false;
 let busy = false;
 let catalogReady = false;
 let savedFilters = [];
 let activeFilter;
+const columnFilters = createColumnFilters((tenders, hasFilters) => {
+  visibleTenders = tenders;
+  filtered = hasFilters;
+  renderPage(1);
+});
 
 function updateControls() {
   ministry.disabled = nature.disabled = manageFilters.disabled = busy || !catalogReady;
@@ -41,8 +52,8 @@ function updateControls() {
     chip.setAttribute('aria-pressed', String(savedFilters[index] === activeFilter));
   }
   byId('clear-filter').disabled = busy;
-  previous.disabled = busy || !result || result.page <= 1;
-  next.disabled = busy || !result || result.page * pageSize >= result.total;
+  previous.disabled = busy || page <= 1;
+  next.disabled = busy || page * pageSize >= visibleTenders.length;
 }
 
 function optionLabel(select, value) {
@@ -206,26 +217,37 @@ function showMessage(text, error = false) {
 
 function clearResults() {
   result = undefined;
-  searchId = undefined;
+  visibleTenders = [];
+  page = 1;
+  filtered = false;
+  columnFilters.setResults([]);
   rows.replaceChildren();
   cap.hidden = true;
+  cacheNote.hidden = true;
   byId('summary').textContent = '20 per page';
   byId('page-number').textContent = 'Page —';
   updateControls();
 }
 
-function render(pageResult) {
-  result = pageResult;
-  const { tenders, page, total, cappedAt } = result;
+function renderPage(pageNumber) {
+  page = pageNumber;
+  const total = visibleTenders.length;
   const offset = (page - 1) * pageSize;
+  const tenders = visibleTenders.slice(offset, offset + pageSize);
+  const count = filtered
+    ? `${total.toLocaleString()} ${total === 1 ? 'match' : 'matches'} out of ${result.tenders.length.toLocaleString()}`
+    : total.toLocaleString();
   rows.replaceChildren(...tenders.map(tenderRow));
   byId('page-number').textContent = total ? `Page ${page} of ${Math.ceil(total / pageSize)}` : 'Page —';
   byId('summary').textContent = tenders.length
-    ? `Showing ${offset + 1}–${offset + tenders.length} of ${total.toLocaleString()} · 20 per page`
-    : '0 tenders · 20 per page';
-  showMessage(tenders.length ? '' : 'No open tenders found for this search.');
+    ? `Showing ${offset + 1}-${offset + tenders.length} of ${count} · 20 per page`
+    : `${filtered ? count : '0 tenders'} · 20 per page`;
+  const noMatches = filtered ? 'No tenders match these column filters.' : 'No open tenders found for this search.';
+  showMessage(tenders.length ? '' : noMatches);
+  const { cappedAt } = result;
   cap.hidden = !cappedAt;
-  if (cappedAt) cap.textContent = `This search reached the ${cappedAt.toLocaleString()}-notice Apify limit. Refine your filters for more specific results.`;
+  if (cappedAt) cap.textContent = `This search reached the ${cappedAt.toLocaleString()}-notice Apify limit. Narrow the search criteria above to retrieve more specific results.`;
+  updateControls();
 }
 
 async function request(path, options) {
@@ -252,9 +274,9 @@ async function refreshUsage() {
   }
 }
 
-async function getPage(page) {
+async function getBatch(searchId, page) {
   const deadline = Date.now() + 150000;
-  const url = `/api/tenders/${searchId}?page=${page}`;
+  const url = `/api/tenders/${searchId}?view=batch&page=${page}`;
   do {
     const data = await request(url);
     if (data.status !== 'loading') return data;
@@ -263,12 +285,36 @@ async function getPage(page) {
   throw new Error('The Apify search did not finish in time. Start a new search to try again.');
 }
 
-async function loadResults(task, text) {
+async function fetchSearch(query) {
+  showMessage('Searching for tender notices on Apify.');
+  try {
+    const { searchId } = await request(`/api/tenders?${query}`, { method: 'POST', headers: { 'X-Tender-Hunter': 'search' } });
+    const { tenders, total, cappedAt } = await getBatch(searchId, 1);
+    for (let batch = 2; tenders.length < total; batch++) {
+      showMessage(`Loading search results (${tenders.length.toLocaleString()} of ${total.toLocaleString()}).`);
+      const nextBatch = await getBatch(searchId, batch);
+      if (!nextBatch.tenders.length || nextBatch.total !== total) throw new Error('The search results changed. Search again to retry.');
+      tenders.push(...nextBatch.tenders);
+    }
+    if (tenders.length !== total) throw new Error('Could not load all tender results.');
+    return { tenders, cappedAt };
+  } finally {
+    void refreshUsage();
+  }
+}
+
+async function loadResults(query) {
   busy = true;
   updateControls();
-  showMessage(text);
+  showMessage('Loading tender results.');
   try {
-    render(await task());
+    const { results, cachedAt } = await cachedSearch(query, () => fetchSearch(query));
+    result = results;
+    visibleTenders = result.tenders;
+    columnFilters.setResults(visibleTenders);
+    cacheNote.hidden = cachedAt === undefined;
+    if (cachedAt !== undefined) cacheNote.textContent = `Browser cache · Saved ${dateFormat.format(cachedAt)}, ${timeFormat.format(cachedAt)} (Bangladesh time)`;
+    renderPage(1);
   } catch (error) {
     showMessage(error.message, true);
   } finally {
@@ -284,11 +330,7 @@ form.addEventListener('submit', event => {
   if (nature.value) query.set('procurementNature', nature.value);
   for (const field of extraFields) if (activeFilter?.[field]) query.set(field, activeFilter[field]);
   clearResults();
-  loadResults(async () => {
-    const search = await request(`/api/tenders?${query}`, { method: 'POST', headers: { 'X-Tender-Hunter': 'search' } });
-    searchId = search.searchId;
-    return getPage(1);
-  }, 'Searching for tender notices on Apify…').finally(refreshUsage);
+  loadResults(query);
 });
 
 manageFilters.addEventListener('click', () => {
@@ -319,8 +361,8 @@ function returnToManualFilters() {
 
 for (const select of [ministry, nature]) select.addEventListener('change', returnToManualFilters);
 byId('clear-filter').addEventListener('click', returnToManualFilters);
-previous.addEventListener('click', () => loadResults(() => getPage(result.page - 1), 'Loading previous page…'));
-next.addEventListener('click', () => loadResults(() => getPage(result.page + 1), 'Loading next page…'));
+previous.addEventListener('click', () => renderPage(page - 1));
+next.addEventListener('click', () => renderPage(page + 1));
 
 request('/api/catalog').then(({ catalog, procurementMethods, loginEnabled }) => {
   byId('sign-out').hidden = !loginEnabled;

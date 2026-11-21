@@ -14,10 +14,10 @@ In the app service’s **Variables** tab, add these values and deploy the staged
 | `APP_PASSWORD` | A strong, unique password for signing in to this instance. Required for startup on Railway. |
 | `APIFY_MAX_ITEMS` | Optional cap per Apify search. Defaults to `100`. Use `3` for a small smoke test. |
 
-Railway normally detects the Node app and its `npm start` command. The app builds its assets at startup and listens on Railway’s `PORT`. Keep the service at one replica so subsequent pages of a search reach the same in-memory session.
+Railway normally detects the Node app and its `npm start` command. The app builds its assets at startup and listens on Railway's `PORT`. Keep the service at one replica so requests that poll and retrieve an active Apify run reach the same in-memory session.
 
 ## 3. Open and verify the deployment
 
 Wait for the deployment to succeed. Under **Settings → Networking → Public Networking**, select **Generate Domain**. Open the generated HTTPS URL and sign in with `APP_PASSWORD`. Check the ministry list and usage card, then run a small search. [Railway public networking](https://docs.railway.com/networking/public-networking)
 
-If the deployment crashes, check the service logs and confirm `APP_PASSWORD` is set. If the domain returns a gateway error, check that its target port matches the service’s `PORT`. If a search fails after sign-in, check `APIFY_TOKEN`, account usage limits, and the corresponding Apify run. Existing search sessions expire after a restart. Saved quick filters stay in the browser.
+If the deployment crashes, check the service logs and confirm `APP_PASSWORD` is set. If the domain returns a gateway error, check that its target port matches the service's `PORT`. If a search fails after sign-in, check `APIFY_TOKEN`, account usage limits, and the corresponding Apify run. A restart ends in-progress search sessions. Completed results remain available from the browser cache for six hours.
