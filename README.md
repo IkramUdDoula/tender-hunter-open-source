@@ -4,8 +4,9 @@ Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tend
 
 - Select one or more ministries or search across all ministries, with an optional procurement nature. Results appear as each search finishes.
 - Save named quick filters with keywords, organizations, procuring entities, methods, and publication windows.
-- Filter the full result set from its column headers and reuse identical searches in the same browser for six hours.
-- View 20 notices per page and track your Apify account usage from the app.
+- Filter and sort the full result set using the column controls. Identical searches reuse results in the same browser for six hours.
+- Show 20, 100, or all matching notices and track your Apify account usage from the app.
+- Star notices and reopen them in the Saved tenders table whenever you return in the same browser.
 
 ## Quick start
 

@@ -1,6 +1,11 @@
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 const number = new Intl.NumberFormat();
 const day = 24 * 60 * 60 * 1000;
+const sortDirections = {
+  none: { icon: '↕', next: 'ascending' },
+  ascending: { icon: '↑', next: 'descending' },
+  descending: { icon: '↓', next: 'none' },
+};
 const valueText = value => String(value ?? '').trim();
 const searchText = value => valueText(value).normalize('NFKC').toLowerCase();
 
@@ -152,7 +157,7 @@ function describe(filter) {
   return filter.from ? `from ${filter.from}` : `through ${filter.to}`;
 }
 
-export function createColumnFilters(onChange) {
+export function createTableColumns(table, onChange) {
   const dialog = document.getElementById('column-filter-dialog');
   const form = document.getElementById('column-filter-form');
   const title = document.getElementById('column-filter-title');
@@ -166,10 +171,48 @@ export function createColumnFilters(onChange) {
   const columns = new Map();
   let tenders = [];
   let editor;
+  let sort;
 
   function matchingRows(exclude) {
     const active = [...filters].filter(([key]) => key !== exclude).map(([key, filter]) => matcher(key, filter));
     return active.length ? tenders.filter(tender => active.every(matches => matches(tender))) : tenders;
+  }
+
+  function orderedRows() {
+    const rows = matchingRows();
+    if (!sort) return rows;
+    const { key, direction } = sort;
+    const isDate = columns.get(key).type === 'date';
+    const compare = isDate ? (left, right) => left - right : collator.compare;
+    const order = direction === 'ascending' ? 1 : -1;
+    const entries = rows.map(tender => {
+      const value = isDate ? Date.parse(tender[key]) : valueText(tender[key]);
+      return { tender, value, blank: value === '' || Number.isNaN(value) };
+    });
+    entries.sort((left, right) => {
+      if (left.blank || right.blank) return Number(left.blank) - Number(right.blank);
+      return order * compare(left.value, right.value);
+    });
+    return entries.map(entry => entry.tender);
+  }
+
+  function currentSortDirection(key) {
+    return sort?.key === key ? sort.direction : 'none';
+  }
+
+  function updateSortControls() {
+    for (const [key, { header, sortButton, label }] of columns) {
+      const direction = currentSortDirection(key);
+      const { icon: sortIcon, next } = sortDirections[direction];
+      const sorted = direction !== 'none';
+      if (sorted) header.setAttribute('aria-sort', direction);
+      else header.removeAttribute('aria-sort');
+      sortButton.disabled = !tenders.length;
+      sortButton.classList.toggle('is-sorted', sorted);
+      sortButton.textContent = sortIcon;
+      sortButton.title = next === 'none' ? `Clear sort by ${label}` : `Sort by ${label} (${next})`;
+      sortButton.setAttribute('aria-label', sortButton.title);
+    }
   }
 
   function open(key) {
@@ -215,23 +258,35 @@ export function createColumnFilters(onChange) {
     }
   }
 
-  for (const header of document.querySelectorAll('th[data-filter]')) {
+  for (const header of table.querySelectorAll('th[data-filter]')) {
     const key = header.dataset.filter;
     const label = header.textContent;
+    const controls = document.createElement('div');
+    controls.className = 'column-controls';
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'column-filter-button';
     button.setAttribute('aria-haspopup', 'dialog');
     button.append(label, icon.content.cloneNode(true));
     button.addEventListener('click', () => open(key));
-    header.replaceChildren(button);
-    columns.set(key, { button, label, type: header.dataset.filterType });
+    const sortButton = document.createElement('button');
+    sortButton.type = 'button';
+    sortButton.className = 'column-sort-button';
+    sortButton.addEventListener('click', () => {
+      const { next } = sortDirections[currentSortDirection(key)];
+      sort = next === 'none' ? undefined : { key, direction: next };
+      updateSortControls();
+      onChange(orderedRows(), filters.size > 0);
+    });
+    controls.append(button, sortButton);
+    header.replaceChildren(controls);
+    columns.set(key, { header, button, sortButton, label, type: header.dataset.filterType });
   }
 
   function finish(key) {
     dialog.close();
     updateControls();
-    onChange(matchingRows(), filters.size > 0);
+    onChange(orderedRows(), filters.size > 0);
     columns.get(key).button.focus();
   }
 
@@ -244,7 +299,7 @@ export function createColumnFilters(onChange) {
     const key = filters.keys().next().value;
     filters.clear();
     updateControls();
-    onChange(tenders, false);
+    onChange(orderedRows(), false);
     columns.get(key).button.focus();
   });
   form.addEventListener('submit', event => {
@@ -256,13 +311,17 @@ export function createColumnFilters(onChange) {
   });
 
   updateControls();
+  updateSortControls();
   return {
     setResults(results, reset = false) {
       const needsUpdate = reset || Boolean(results.length) !== Boolean(tenders.length);
       tenders = results;
       if (reset) filters.clear();
-      if (needsUpdate) updateControls();
-      return matchingRows();
+      if (needsUpdate) {
+        updateControls();
+        updateSortControls();
+      }
+      return orderedRows();
     },
   };
 }

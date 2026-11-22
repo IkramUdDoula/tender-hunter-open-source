@@ -16,7 +16,8 @@
       <a class="brand" href="/"><span class="brand-icon" aria-hidden="true"></span>Tender Hunter</a>
       <div class="masthead-actions">
         <a class="source" href="https://www.eprocure.gov.bd/" target="_blank" rel="noopener noreferrer">Bangladesh e-GP <span aria-hidden="true">↗</span></a>
-        <form id="sign-out" method="post" action="/logout" hidden><button class="sign-out" type="submit">Sign out</button></form>
+        <button class="masthead-button" id="open-saved-tenders" type="button" aria-haspopup="dialog">Saved tenders</button>
+        <form id="sign-out" method="post" action="/logout" hidden><button class="masthead-button" type="submit">Sign out</button></form>
       </div>
     </div>
   </header>
@@ -73,18 +74,30 @@
         <progress id="search-progress-bar" aria-label="Tender search progress" aria-describedby="search-progress-label" value="0" max="1"></progress>
       </div>
       <p id="search-failures" class="search-failures" role="status" hidden></p>
-      <div class="column-filter-bar" id="column-filter-bar" role="group" aria-label="Applied column filters" hidden>
-        <div class="quick-filter-chips" id="column-filter-chips"></div>
-        <button class="secondary" id="clear-column-filters" type="button">Clear column filters</button>
+      <div class="results-toolbar">
+        <div class="column-filter-bar" id="column-filter-bar" role="group" aria-label="Applied column filters" hidden>
+          <div class="quick-filter-chips" id="column-filter-chips"></div>
+          <button class="secondary" id="clear-column-filters" type="button">Clear column filters</button>
+        </div>
+        <div class="page-size">
+          <label for="page-size">Results per page</label>
+          <select id="page-size">
+            <option value="20">20</option>
+            <option value="100">100</option>
+            <option value="all">All</option>
+          </select>
+        </div>
       </div>
+      <p class="search-failures" id="save-tender-feedback" role="status" hidden></p>
       <div class="table-scroll" role="region" aria-label="Tender notices table" tabindex="0">
-        <table>
+        <table id="tender-table">
           <colgroup>
-            <col class="col-id"><col class="col-title"><col class="col-nature"><col class="col-method">
+            <col class="col-save"><col class="col-id"><col class="col-title"><col class="col-nature"><col class="col-method">
             <col class="col-ministry"><col class="col-org"><col class="col-entity">
             <col class="col-date"><col class="col-date"><col class="col-status"><col class="col-url">
           </colgroup>
           <thead><tr>
+            <th class="save-cell" scope="col">Save</th>
             <th scope="col" data-filter="id" data-filter-type="text">ID</th>
             <th scope="col" data-filter="title" data-filter-type="text">Title</th>
             <th scope="col" data-filter="nature" data-filter-type="values">Nature</th>
@@ -103,12 +116,12 @@
       <div class="message" id="message" role="status">Choose ministries to search for tenders.</div>
       <footer class="results-footer">
         <div>
-          <p id="summary" aria-live="polite">20 per page</p>
+          <p id="summary" aria-live="polite"></p>
           <p id="cache-note" hidden></p>
         </div>
-        <nav class="pagination" aria-label="Tender result pages">
+        <nav id="pagination" class="pagination" aria-label="Tender result pages" hidden>
           <button id="previous" type="button" disabled>Previous</button>
-          <span id="page-number" aria-live="polite">Page —</span>
+          <span id="page-number" aria-live="polite"></span>
           <button id="next" type="button" disabled>Next</button>
         </nav>
       </footer>
@@ -116,6 +129,19 @@
     </section>
     <footer class="source-footer"><span>Source <a href="https://apify.com/a-g-d/bd-egp" target="_blank" rel="noopener noreferrer">Apify e-GP actor ↗</a></span><span>Dates and times in Bangladesh time (UTC+6)</span></footer>
   </main>
+  <dialog class="filter-dialog saved-tenders-dialog" id="saved-tenders-dialog" aria-labelledby="saved-tenders-title">
+    <div class="dialog-heading">
+      <h2 id="saved-tenders-title">Saved tenders</h2>
+      <button class="secondary" id="close-saved-tenders" type="button" autofocus>Done</button>
+    </div>
+    <div class="dialog-content">
+      <p class="search-failures" id="saved-tenders-feedback" role="status" hidden></p>
+      <p class="message" id="saved-tenders-empty" role="status" hidden>Star a tender to find it here later.</p>
+      <div class="table-scroll" id="saved-table-region" role="region" aria-label="Saved tender notices" tabindex="0" hidden>
+        <table id="saved-table"><tbody id="saved-rows"></tbody></table>
+      </div>
+    </div>
+  </dialog>
   <dialog class="filter-dialog" id="filter-dialog" aria-labelledby="filter-dialog-title">
     <div class="dialog-heading">
       <h2 id="filter-dialog-title">Manage quick filters</h2>

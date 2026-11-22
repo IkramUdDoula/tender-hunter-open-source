@@ -1,7 +1,7 @@
-import { createColumnFilters } from './column-filters.js';
+import { createTableColumns } from './column-filters.js';
+import { createSavedTenders } from './saved-tenders.js';
 import { cachedSearch } from './search-cache.js';
 
-const pageSize = 20;
 const locale = { timeZone: 'Asia/Dhaka' };
 const dateFormat = new Intl.DateTimeFormat('en-GB', { ...locale, day: '2-digit', month: 'short', year: 'numeric' });
 const timeFormat = new Intl.DateTimeFormat('en-GB', { ...locale, hour: '2-digit', minute: '2-digit' });
@@ -24,8 +24,12 @@ const filterFeedback = byId('filter-feedback');
 const savedList = byId('saved-filters');
 const storageKey = 'tender-hunter.quick-filters';
 const extraFields = ['keyword', 'organization', 'method', 'publishedSince'];
+const tenderTable = byId('tender-table');
 const rows = byId('rows');
 const message = byId('message');
+const pageSizeSelect = byId('page-size');
+const pagination = byId('pagination');
+const pageLabel = byId('page-number');
 const previous = byId('previous');
 const next = byId('next');
 const cap = byId('cap');
@@ -44,10 +48,12 @@ let remainingSearches = 0;
 let catalogReady = false;
 let savedFilters = [];
 let activeFilter;
-const columnFilters = createColumnFilters((tenders, hasFilters) => {
+const savedTenders = createSavedTenders(tenderTable, tenderRow);
+const tableColumns = createTableColumns(tenderTable, (tenders, hasFilters) => {
   visibleTenders = tenders;
   filtered = hasFilters;
   renderPage(1);
+  updateResultStatus();
 });
 
 function updateControls() {
@@ -60,8 +66,6 @@ function updateControls() {
     chip.setAttribute('aria-pressed', String(savedFilters[index] === activeFilter));
   }
   byId('clear-filter').disabled = busy;
-  previous.disabled = page <= 1;
-  next.disabled = page * pageSize >= visibleTenders.length;
 }
 
 function ministryPicker(id, onChange) {
@@ -261,6 +265,9 @@ function noticeCell(row, tender) {
 
 function tenderRow(tender) {
   const row = document.createElement('tr');
+  const save = cell(row, '', 'save-cell');
+  const star = savedTenders.createButton(tender);
+  if (star) save.append(star);
   cell(row, tender.id, 'tender-id');
   cell(row, tender.title, 'title');
   cell(row, tender.nature);
@@ -290,35 +297,46 @@ function showMessage(text, error = false) {
 function clearResults() {
   result = undefined;
   remainingSearches = 0;
-  visibleTenders = [];
-  page = 1;
   filtered = false;
-  columnFilters.setResults([], true);
-  rows.replaceChildren();
+  visibleTenders = tableColumns.setResults([], true);
+  renderPage(1);
   cap.hidden = true;
   cacheNote.hidden = true;
   progress.hidden = true;
   searchFailures.hidden = true;
-  byId('summary').textContent = '20 per page';
-  byId('page-number').textContent = 'Page —';
   updateControls();
 }
 
 function renderPage(pageNumber) {
-  page = pageNumber;
   const total = visibleTenders.length;
+  const showAll = pageSizeSelect.value === 'all';
+  const pageSize = showAll ? Math.max(1, total) : Number(pageSizeSelect.value);
+  const pageCount = Math.ceil(total / pageSize);
+  page = Math.min(Math.max(1, pageNumber), Math.max(1, pageCount));
   const offset = (page - 1) * pageSize;
-  const tenders = visibleTenders.slice(offset, offset + pageSize);
+  const tenders = showAll ? visibleTenders : visibleTenders.slice(offset, offset + pageSize);
+  const fragment = document.createDocumentFragment();
+  for (const tender of tenders) fragment.append(tenderRow(tender));
+  rows.replaceChildren(fragment);
+  pagination.hidden = showAll || !pageCount;
+  previous.disabled = page <= 1;
+  next.disabled = page >= pageCount;
+  pageLabel.textContent = pageCount ? `Page ${page} of ${pageCount}` : '';
+
   const count = filtered
     ? `${total.toLocaleString()} ${total === 1 ? 'match' : 'matches'} out of ${result.tenders.length.toLocaleString()}`
-    : total.toLocaleString();
-  rows.replaceChildren(...tenders.map(tenderRow));
-  byId('page-number').textContent = total ? `Page ${page} of ${Math.ceil(total / pageSize)}` : 'Page —';
-  byId('summary').textContent = tenders.length
-    ? `Showing ${offset + 1}-${offset + tenders.length} of ${count} · 20 per page`
-    : `${filtered ? count : '0 tenders'} · 20 per page`;
+    : `${total.toLocaleString()} ${total === 1 ? 'tender' : 'tenders'}`;
+  const summary = byId('summary');
+  if (tenders.length) {
+    summary.textContent = showAll ? `Showing all ${count}` : `Showing ${offset + 1}-${offset + tenders.length} of ${count}`;
+  } else {
+    summary.textContent = result ? count : '';
+  }
+}
+
+function updateResultStatus() {
   const noMatches = filtered ? 'No tenders match these column filters.' : 'No open tenders found for this search.';
-  showMessage(tenders.length || remainingSearches ? '' : noMatches);
+  showMessage(visibleTenders.length || remainingSearches ? '' : noMatches);
   const { cappedAt, cappedSearches } = result;
   cap.hidden = !cappedSearches;
   if (cappedSearches) {
@@ -327,7 +345,6 @@ function renderPage(pageNumber) {
       : `${cappedSearches} searches reached their Apify notice limits.`;
     cap.textContent = `${limit} Narrow the criteria above to retrieve more specific results.`;
   }
-  updateControls();
 }
 
 async function request(path, options) {
@@ -414,8 +431,9 @@ async function loadResults(baseQuery, selected) {
       }
       remainingSearches--;
       progressBar.value = index + 1;
-      visibleTenders = columnFilters.setResults(result.tenders);
+      visibleTenders = tableColumns.setResults(result.tenders);
       renderPage(page);
+      updateResultStatus();
     }
     const completed = selected.length - failures.length;
     const failureCount = failures.length ? ` · ${failures.length} failed` : '';
@@ -482,6 +500,7 @@ function returnToManualFilters() {
 
 nature.addEventListener('change', returnToManualFilters);
 byId('clear-filter').addEventListener('click', returnToManualFilters);
+pageSizeSelect.addEventListener('change', () => renderPage(1));
 previous.addEventListener('click', () => renderPage(page - 1));
 next.addEventListener('click', () => renderPage(page + 1));
 
