@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
-const lifetimeSeconds = 12 * 60 * 60;
+const lifetimeSeconds = 30 * 24 * 60 * 60;
 const maxLoginBytes = 4096;
 const sha256 = value => createHash('sha256').update(value).digest();
 

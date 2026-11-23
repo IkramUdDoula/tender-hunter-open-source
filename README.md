@@ -8,6 +8,8 @@ Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tend
 - Show 20, 100, or all matching notices and track your Apify account usage from the app.
 - Star notices and reopen them in the Saved tenders table whenever you return in the same browser.
 
+Sign-in lasts for 30 days in the same browser, unless you sign out, clear cookies, or the app password changes.
+
 ## Quick start
 
 You need Node.js 22 or later and an Apify account with an API token. There are no package dependencies to install.
