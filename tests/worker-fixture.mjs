@@ -44,6 +44,9 @@ export async function workerFixture(scenario) {
       const offset = Number(url.searchParams.get('offset') ?? 0);
       const limit = Number(url.searchParams.get('limit'));
       const fields = url.searchParams.get('fields').split(',');
+      if (run.metadataLag && fields.join(',') === 'tenderId,ministry' && !run.metadataRead++) {
+        return Response.json([], { headers: { 'X-Apify-Pagination-Total': String(run.items.length) } });
+      }
       const items = run.items.slice(offset, offset + limit).map(item =>
         Object.fromEntries(Object.entries(item).filter(([key]) => fields.includes(key))));
       return Response.json(items, { headers: { 'X-Apify-Pagination-Total': String(run.items.length) } });

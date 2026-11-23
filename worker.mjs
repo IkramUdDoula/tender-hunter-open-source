@@ -123,8 +123,10 @@ async function prepareDataset(token, search) {
     }),
     completionCounts(token, search.runId),
   ]);
+  // Dataset rows and pagination metadata may become visible at different times
+  // immediately after SUCCEEDED. Poll this same run until they agree.
+  if (items.length !== Math.min(total, search.ministry ? search.limit : 1)) return false;
   if (search.ministry) {
-    if (items.length !== Math.min(total, search.limit)) throw new RequestError('Could not load all tender results. Search again to retry.', 502);
     const ministry = normalize(search.ministry);
     search.positions = [];
     for (const [index, item] of items.entries()) {

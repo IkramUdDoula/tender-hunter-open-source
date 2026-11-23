@@ -114,3 +114,19 @@ test('running and failed upstream runs retain their API behavior', async () => {
     assert.equal((await fixture.page(searchId)).status, expected);
   }
 });
+
+test('dataset visibility lag polls the same completed run until rows and counts agree', async () => {
+  for (const ministry of ['162', 'all']) {
+    const fixture = await workerFixture(() => ({ items: notices(rail, railIds, 4), metadataLag: true, metadataRead: 0 }));
+    const { searchId } = await fixture.start(`ministry=${ministry}`);
+    const waiting = await fixture.page(searchId);
+    assert.equal(waiting.status, 202);
+    assert.equal((await waiting.json()).status, 'loading');
+    const response = await fixture.page(searchId);
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.equal(isCompleteSearch(data), true);
+    assert.equal(data.tenders.length, 4);
+    assert.equal(fixture.calls.filter(call => call.input).length, 1, 'Retry must not start another paid run');
+  }
+});
