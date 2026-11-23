@@ -74,7 +74,9 @@
         <progress id="search-progress-bar" aria-label="Tender search progress" aria-describedby="search-progress-label" value="0" max="1"></progress>
       </div>
       <p id="search-failures" class="search-failures" role="status" hidden></p>
+      <p id="cap" class="cap" role="status" hidden></p>
       <div class="results-toolbar">
+        <button class="secondary" id="refresh-results" type="submit" form="search-form" hidden>Refresh results</button>
         <div class="column-filter-bar" id="column-filter-bar" role="group" aria-label="Applied column filters" hidden>
           <div class="quick-filter-chips" id="column-filter-chips"></div>
           <button class="secondary" id="clear-column-filters" type="button">Clear column filters</button>
@@ -125,7 +127,6 @@
           <button id="next" type="button" disabled>Next</button>
         </nav>
       </footer>
-      <p id="cap" class="cap" role="status" hidden></p>
     </section>
     <footer class="source-footer"><span>Source <a href="https://apify.com/a-g-d/bd-egp" target="_blank" rel="noopener noreferrer">Apify e-GP actor ↗</a></span><span>Dates and times in Bangladesh time (UTC+6)</span></footer>
   </main>

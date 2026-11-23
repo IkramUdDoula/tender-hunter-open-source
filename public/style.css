@@ -179,7 +179,7 @@ tbody tr:hover { background: #f8faf7; }
 .results-footer { display: flex; justify-content: space-between; gap: 16px; padding: 16px 20px; border-top: 1px solid var(--border); align-items: center; color: var(--muted); font-size: 12px; }
 .results-footer p { margin: 0; }
 #cache-note { margin-top: 4px; }
-.cap { margin: 0; padding: 0 20px 16px; color: #725726; font-size: 12px; line-height: 1.5; }
+.cap { margin: 0; padding: 0 20px 16px; color: #725726; font-size: 14px; line-height: 1.5; }
 .pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pagination button { min-height: 34px; padding: 0 11px; border: 1px solid #cdd9ce; border-radius: 6px; background: #fff; color: #254737; font-weight: 600; }
 .pagination button:disabled { color: #6e7d73; background: #f5f7f4; }

@@ -4,7 +4,7 @@ Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tend
 
 - Select one or more ministries or search across all ministries, with an optional procurement nature. Results appear as each search finishes.
 - Save named quick filters with keywords, organizations, procuring entities, methods, and publication windows.
-- Filter and sort the full result set using the column controls. Identical searches reuse results in the same browser for six hours.
+- Filter and sort loaded results using the column controls. Confirmed complete searches are reused in the same browser for six hours; **Refresh results** starts a fresh search.
 - Show 20, 100, or all matching notices and track your Apify account usage from the app.
 - Star notices and reopen them in the Saved tenders table whenever you return in the same browser.
 
@@ -24,7 +24,8 @@ Copy `.env.example` to `.env` and set `APIFY_TOKEN` to a token from [Apify accou
 | Variable | Purpose |
 | --- | --- |
 | `APIFY_TOKEN` | Required for tender searches and usage reporting. Keep it on the server. |
-| `APIFY_MAX_ITEMS` | Maximum records the actor may collect per search. Defaults to 100. |
+| `APIFY_MAX_ITEMS` | Maximum records the actor may collect per search (1–50,000). Defaults to 5,000. |
+| `APIFY_TIMEOUT_SECONDS` | Actor runtime budget per search (60–3,600 seconds). Defaults to 600 seconds. |
 | `APP_PASSWORD` | Shared password for app sign-in. Optional on loopback and required on Railway. |
 | `PORT` | HTTP port. Defaults to 3000 locally. |
 
@@ -36,6 +37,10 @@ Copy `.env.example` to `.env` and set `APIFY_TOKEN` to a token from [Apify accou
 
 ## Usage and development
 
+The app checks the actor's completion log because an actor can succeed after stopping early. Searches stopped by a time or record limit, or whose completeness cannot be verified, show **Partial results**. Their counts cover loaded notices only, and partial results are not cached. Only an `end_of_list` completion is treated as complete. Existing environment overrides still apply, and larger search budgets can increase Apify charges.
+
 See the [usage guide](docs/usage.md) for search, shortcuts, and common errors. The app uses a Node.js HTTP server and browser-native HTML, CSS, and JavaScript. `npm run build` bundles the app into `dist/`. Active Apify runs are tracked in server memory. Completed results and saved quick filters live in the browser.
+
+Run `npm test` for the API and cache regression checks. `node tests/preview.mjs` starts a loopback-only browser QA server with synthetic data and prints its temporary URL; it never calls Apify.
 
 The application code is available under the [MIT License](LICENSE). The tender notices come from [Bangladesh e-GP](https://www.eprocure.gov.bd/). Apify runs are subject to your account’s usage limits and pricing.

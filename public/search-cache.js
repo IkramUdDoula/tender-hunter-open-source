@@ -1,4 +1,7 @@
+import { isCompleteSearch } from './search-status.js';
+
 const lifetime = 6 * 60 * 60 * 1000;
+const cacheVersion = 'complete-v1:';
 const storeName = 'results';
 let database;
 
@@ -26,7 +29,7 @@ async function read(key) {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const entry = request.result;
-        resolve(entry?.expiresAt > Date.now() ? entry : undefined);
+        resolve(entry?.expiresAt > Date.now() && isCompleteSearch(entry.results) ? entry : undefined);
       };
     });
   } catch {
@@ -50,21 +53,23 @@ async function write(key, results) {
         cursor.delete();
         cursor.continue();
       };
-      store.put({ expiresAt: now + lifetime, results }, key);
+      if (isCompleteSearch(results)) store.put({ expiresAt: now + lifetime, results }, key);
+      else store.delete(key);
     });
   } catch {
     // Searching still works when storage is disabled or full.
   }
 }
 
-export async function cachedSearch(query, fetchResults) {
+export async function cachedSearch(query, fetchResults, { refresh = false } = {}) {
   const key = new URLSearchParams(query);
   key.sort();
+  const cacheKey = cacheVersion + key.toString();
   const search = async () => {
-    const cached = await read(key.toString());
+    const cached = !refresh && await read(cacheKey);
     if (cached) return { results: cached.results, cachedAt: cached.expiresAt - lifetime };
     const results = await fetchResults();
-    await write(key.toString(), results);
+    await write(cacheKey, results);
     return { results };
   };
   // Recheck inside the lock so simultaneous searches in two tabs can share a result.

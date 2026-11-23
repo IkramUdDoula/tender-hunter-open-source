@@ -8,6 +8,7 @@ const files = {
   '/column-filters.js': ['column-filters.js', 'text/javascript'],
   '/saved-tenders.js': ['saved-tenders.js', 'text/javascript'],
   '/search-cache.js': ['search-cache.js', 'text/javascript'],
+  '/search-status.js': ['search-status.js', 'text/javascript'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
 };
 

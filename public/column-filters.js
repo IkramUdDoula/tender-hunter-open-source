@@ -170,6 +170,7 @@ export function createTableColumns(table, onChange) {
   const filters = new Map();
   const columns = new Map();
   let tenders = [];
+  let complete = true;
   let editor;
   let sort;
 
@@ -221,6 +222,11 @@ export function createTableColumns(table, onChange) {
     const editors = { text: textEditor, date: dateEditor };
     title.textContent = `Filter by ${label}`;
     content.replaceChildren();
+    const hint = document.createElement('p');
+    hint.className = 'column-filter-hint';
+    hint.textContent = complete ? 'Filters and counts apply to the loaded results.'
+      : 'This search is incomplete. Counts cover loaded notices only; more matches may exist. Narrow the search filters or refresh results.';
+    content.append(hint);
     clear.hidden = !current;
     apply.disabled = false;
     if (type === 'values') {
@@ -313,9 +319,10 @@ export function createTableColumns(table, onChange) {
   updateControls();
   updateSortControls();
   return {
-    setResults(results, reset = false) {
+    setResults(results, reset = false, isComplete = true) {
       const needsUpdate = reset || Boolean(results.length) !== Boolean(tenders.length);
       tenders = results;
+      complete = isComplete;
       if (reset) filters.clear();
       if (needsUpdate) {
         updateControls();

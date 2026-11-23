@@ -1,6 +1,7 @@
 import { createTableColumns } from './column-filters.js';
 import { createSavedTenders } from './saved-tenders.js';
 import { cachedSearch } from './search-cache.js';
+import { isCompleteSearch, partialSearchMessage } from './search-status.js';
 
 const locale = { timeZone: 'Asia/Dhaka' };
 const dateFormat = new Intl.DateTimeFormat('en-GB', { ...locale, day: '2-digit', month: 'short', year: 'numeric' });
@@ -33,6 +34,7 @@ const pageLabel = byId('page-number');
 const previous = byId('previous');
 const next = byId('next');
 const cap = byId('cap');
+const refresh = byId('refresh-results');
 const cacheNote = byId('cache-note');
 const progress = byId('search-progress');
 const progressBar = byId('search-progress-bar');
@@ -61,6 +63,8 @@ function updateControls() {
   ministry.disable(disabled);
   nature.disabled = manageFilters.disabled = disabled;
   load.disabled = disabled || !ministry.values.length;
+  refresh.hidden = !result;
+  refresh.disabled = disabled || !result;
   for (const [index, chip] of Array.from(chipList.children).entries()) {
     chip.disabled = disabled;
     chip.setAttribute('aria-pressed', String(savedFilters[index] === activeFilter));
@@ -326,25 +330,22 @@ function renderPage(pageNumber) {
   const count = filtered
     ? `${total.toLocaleString()} ${total === 1 ? 'match' : 'matches'} out of ${result.tenders.length.toLocaleString()}`
     : `${total.toLocaleString()} ${total === 1 ? 'tender' : 'tenders'}`;
+  const partial = result && (remainingSearches > 0 || result.partialSearches.length > 0);
+  const scopedCount = partial ? `${count} loaded` : count;
   const summary = byId('summary');
   if (tenders.length) {
-    summary.textContent = showAll ? `Showing all ${count}` : `Showing ${offset + 1}-${offset + tenders.length} of ${count}`;
+    summary.textContent = showAll ? `Showing ${partial ? '' : 'all '}${scopedCount}` : `Showing ${offset + 1}-${offset + tenders.length} of ${scopedCount}`;
   } else {
-    summary.textContent = result ? count : '';
+    summary.textContent = result ? scopedCount : '';
   }
 }
 
 function updateResultStatus() {
-  const noMatches = filtered ? 'No tenders match these column filters.' : 'No open tenders found for this search.';
+  const noMatches = filtered ? 'No loaded tenders match these column filters.' : result.partialSearches.length
+    ? 'No tenders loaded. Narrow the search filters or refresh results to try again.' : 'No open tenders found for this search.';
   showMessage(visibleTenders.length || remainingSearches ? '' : noMatches);
-  const { cappedAt, cappedSearches } = result;
-  cap.hidden = !cappedSearches;
-  if (cappedSearches) {
-    const limit = cappedSearches === 1
-      ? `One search reached the ${cappedAt.toLocaleString()}-notice Apify limit per search.`
-      : `${cappedSearches} searches reached their Apify notice limits.`;
-    cap.textContent = `${limit} Narrow the criteria above to retrieve more specific results.`;
-  }
+  cap.textContent = partialSearchMessage(result.partialSearches);
+  cap.hidden = !cap.textContent;
 }
 
 async function request(path, options) {
@@ -371,8 +372,7 @@ async function refreshUsage() {
   }
 }
 
-async function getBatch(searchId, page) {
-  const deadline = Date.now() + 150000;
+async function getBatch(searchId, page, deadline) {
   const url = `/api/tenders/${searchId}?view=batch&page=${page}`;
   do {
     const data = await request(url);
@@ -383,19 +383,20 @@ async function getBatch(searchId, page) {
 }
 
 async function fetchSearch(query) {
-  const { searchId } = await request(`/api/tenders?${query}`, { method: 'POST', headers: { 'X-Tender-Hunter': 'search' } });
-  const { tenders, total, cappedAt } = await getBatch(searchId, 1);
+  const { searchId, timeoutSeconds } = await request(`/api/tenders?${query}`, { method: 'POST', headers: { 'X-Tender-Hunter': 'search' } });
+  const deadline = Date.now() + (timeoutSeconds + 120) * 1000;
+  const { tenders, total, cappedAt, complete, stopReason } = await getBatch(searchId, 1, deadline);
   for (let batch = 2; tenders.length < total; batch++) {
-    const nextBatch = await getBatch(searchId, batch);
+    const nextBatch = await getBatch(searchId, batch, deadline);
     if (!nextBatch.tenders.length || nextBatch.total !== total) throw new Error('The search results changed. Search again to retry.');
     tenders.push(...nextBatch.tenders);
   }
   if (tenders.length !== total) throw new Error('Could not load all tender results.');
-  return { tenders, cappedAt };
+  return { tenders, cappedAt, complete, stopReason };
 }
 
-async function loadResults(baseQuery, selected) {
-  result = { tenders: [], cappedAt: null, cappedSearches: 0 };
+async function loadResults(baseQuery, selected, forceRefresh = false) {
+  result = { tenders: [], partialSearches: [] };
   remainingSearches = selected.length;
   busy = true;
   updateControls();
@@ -417,26 +418,25 @@ async function loadResults(baseQuery, selected) {
         const { results, cachedAt } = await cachedSearch(query, () => {
           requestedApify = true;
           return fetchSearch(query);
-        });
+        }, { refresh: forceRefresh });
         result.tenders = result.tenders.concat(results.tenders);
-        if (results.cappedAt) {
-          result.cappedAt = results.cappedAt;
-          result.cappedSearches++;
-        }
+        if (!isCompleteSearch(results)) result.partialSearches.push({ name, stopReason: results.stopReason, cappedAt: results.cappedAt });
         if (cachedAt !== undefined) cacheDates.push(cachedAt);
       } catch (error) {
+        result.partialSearches.push({ name, stopReason: 'failed' });
         failures.push(`${name} (${error.message})`);
         searchFailures.textContent = `Could not load ${failures.join('; ')}`;
         searchFailures.hidden = false;
       }
       remainingSearches--;
       progressBar.value = index + 1;
-      visibleTenders = tableColumns.setResults(result.tenders);
+      visibleTenders = tableColumns.setResults(result.tenders, false, !remainingSearches && !result.partialSearches.length);
       renderPage(page);
       updateResultStatus();
     }
     const completed = selected.length - failures.length;
-    const failureCount = failures.length ? ` · ${failures.length} failed` : '';
+    const partialCount = result.partialSearches.length - failures.length;
+    const failureCount = `${partialCount ? ` · ${partialCount} partial` : ''}${failures.length ? ` · ${failures.length} failed` : ''}`;
     progress.hidden = selected.length === 1;
     progressLabel.textContent = `${completed} of ${selected.length} ministries loaded${failureCount}`;
     if (!completed) showMessage('');
@@ -461,7 +461,7 @@ form.addEventListener('submit', event => {
   if (nature.value) query.set('procurementNature', nature.value);
   for (const field of extraFields) if (activeFilter?.[field]) query.set(field, activeFilter[field]);
   clearResults();
-  loadResults(query, [...ministry.values]);
+  loadResults(query, [...ministry.values], event.submitter === refresh);
 });
 
 manageFilters.addEventListener('click', () => {

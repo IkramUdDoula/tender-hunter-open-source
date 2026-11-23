@@ -4,14 +4,18 @@
 
 1. Sign in with the app password if the instance asks for it.
 2. Select one or more ministries or choose **All ministries** for a single broad search. Optionally select a procurement nature.
-3. Click **Search tenders**. The progress bar shows which ministry is loading. Results appear as each ministry finishes and stay available if another search fails. The browser reuses saved results when the search criteria for a ministry match a completed search from the past six hours. The footer identifies cached results.
+3. Click **Search tenders**. The progress bar shows which ministry is loading. Results appear as each ministry finishes and stay available if another search fails. The browser reuses saved results when the search criteria for a ministry match a confirmed complete search from the past six hours. The footer identifies cached results. **Refresh results** bypasses the cache.
 4. Use **Results per page** to show 20, 100, or **All** matching notices. Use **Next** and **Previous** in the paged views. Select **Open** in the URL column to view the official notice. On a narrow screen, scroll the table horizontally for the remaining columns.
 
 Dates and times in the table use Bangladesh time. The search covers live notices. The configured run cap applies to each Apify search. Multiple uncached ministry searches can increase Apify usage.
 
+Searches default to 5,000 notices and 10 minutes per ministry. If a search reaches its time or record limit, or completeness cannot be verified, **Partial results** identifies the affected ministries. Counts cover loaded notices only, so a targeted search may find additional matches. Partial results are not cached. Narrow the search criteria or refresh results to try again.
+
 ## Filter and sort search results
 
 Select a column heading to open its filter. Use a text match for ID or title, a date range for publication or closing dates, or a searchable checklist for columns such as organization and method. Checklist counts reflect the other applied column filters across all pages. Multiple values within a column match any selected value. Filters on different columns must all match.
+
+Column filters use the notices already loaded; they do not start a new upstream search. The dialog warns when the underlying search is incomplete.
 
 Select an applied filter above the table to edit or clear it. Select **Clear column filters** to restore the full search results.
 

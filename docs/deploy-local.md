@@ -13,7 +13,7 @@ cd tender-hunter-open-source
 
 Copy `.env.example` to `.env`. On Windows PowerShell, run `Copy-Item .env.example .env`. On macOS or Linux, run `cp .env.example .env`.
 
-Open `.env` and fill in `APIFY_TOKEN`. Set `APP_PASSWORD` if you want a local sign-in page. For a small first search, set `APIFY_MAX_ITEMS=3`. The default cap is 100 records per search. Apify may charge for records collected by the actor.
+Open `.env` and fill in `APIFY_TOKEN`. Set `APP_PASSWORD` if you want a local sign-in page. For a small first search, set `APIFY_MAX_ITEMS=3`. The default cap is 5,000 records per search with a 600-second runtime budget. Set `APIFY_TIMEOUT_SECONDS` to adjust that budget (60–3,600 seconds). Apify may charge for records collected by the actor. Searches that stop early are labelled partial and are not cached.
 
 ## 3. Start and verify
 
