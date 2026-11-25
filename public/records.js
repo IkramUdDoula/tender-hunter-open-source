@@ -12,6 +12,7 @@ export function recordKey(record) {
 }
 
 export function setTableType(table, type) {
+  table.dataset.searchType = type;
   for (const element of table.querySelectorAll('[data-record-type]')) {
     element.hidden = element.dataset.recordType !== type;
   }

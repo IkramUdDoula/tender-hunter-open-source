@@ -115,6 +115,7 @@ export function createSavedTenders(searchTable, renderRow) {
 
   document.getElementById('open-saved-tenders').addEventListener('click', () => {
     refresh();
+    typePicker.value = searchTable.dataset.searchType ?? 'tenders';
     updateType();
     renderSavedRows();
     dialog.showModal();
