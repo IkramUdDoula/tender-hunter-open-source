@@ -1,5 +1,5 @@
 const calendarFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' });
-const moneyFormat = new Intl.NumberFormat('en-BD', { maximumFractionDigits: 0 });
+const moneyFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
 export const recordType = record => record?.recordType === 'award' ? 'awards' : 'tenders';
 

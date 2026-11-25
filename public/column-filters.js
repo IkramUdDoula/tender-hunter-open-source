@@ -1,5 +1,6 @@
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 const number = new Intl.NumberFormat();
+const amount = new Intl.NumberFormat('en-IN');
 const day = 24 * 60 * 60 * 1000;
 const sortDirections = {
   none: { icon: '↕', next: 'ascending' },
@@ -174,7 +175,7 @@ const matcher = (key, filter) => tender => matchesFilter(tender[key], filter);
 function describe(filter) {
   if (filter.values) return filter.values.map(value => value || '(Blank)').join(', ');
   if (filter.query) return `${filter.mode === 'exact' ? 'is' : 'contains'} ${filter.query}`;
-  if (Object.hasOwn(filter, 'min')) return `${filter.min === '' ? 'Any' : number.format(Number(filter.min))} to ${filter.max === '' ? 'Any' : number.format(Number(filter.max))} BDT`;
+  if (Object.hasOwn(filter, 'min')) return `${filter.min === '' ? 'Any' : amount.format(Number(filter.min))} to ${filter.max === '' ? 'Any' : amount.format(Number(filter.max))} BDT`;
   if (filter.from && filter.to) return `${filter.from} to ${filter.to}`;
   return filter.from ? `from ${filter.from}` : `through ${filter.to}`;
 }
