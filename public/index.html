@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Browse live Bangladesh e-GP tenders by ministry and procurement type.">
+  <meta name="description" content="Search Bangladesh e-GP tenders and contract awards, including winners and contract values.">
   <title>Tender Hunter</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&display=swap">
@@ -25,7 +25,7 @@
     <section class="intro" aria-labelledby="page-title">
       <div>
         <h1 id="page-title">Tender Hunter</h1>
-        <p>Browse open tenders from Bangladesh’s e-GP portal.</p>
+        <p>Find open tenders and awarded contracts from Bangladesh's e-GP portal.</p>
       </div>
       <aside class="usage" aria-labelledby="usage-title">
         <div class="usage-header">
@@ -39,14 +39,21 @@
       </aside>
     </section>
 
-    <section class="results" aria-label="Tender results">
+    <section class="results" aria-label="Search results">
       <form class="toolbar" id="search-form">
+        <div class="filter">
+          <label for="record-type">Search for</label>
+          <select id="record-type" disabled>
+            <option value="tenders">Live tenders</option>
+            <option value="awards">Contract awards</option>
+          </select>
+        </div>
         <div class="filter">
           <label id="ministry-label" for="ministry">Ministries</label>
           <button id="ministry" class="ministry-toggle" type="button" aria-expanded="false" aria-controls="ministry-options" aria-labelledby="ministry-label ministry" disabled>Select ministries</button>
           <div id="ministry-options" class="ministry-options" role="group" aria-labelledby="ministry-label" hidden></div>
         </div>
-        <div class="filter">
+        <div class="filter" id="nature-filter">
           <label for="procurementNature">Procurement nature</label>
           <select id="procurementNature" disabled>
             <option value="">All types</option>
@@ -56,8 +63,17 @@
             <option value="works">Works</option>
           </select>
         </div>
+        <div class="filter" id="signed-filter" hidden>
+          <label for="signed-since">Contract signed since</label>
+          <input id="signed-since" type="text" maxlength="80" placeholder="e.g. 30 days or 2026-01-01" disabled>
+        </div>
+        <div class="filter">
+          <label for="keyword">Keyword in title</label>
+          <input id="keyword" type="search" maxlength="200" placeholder="e.g. toll or software" disabled>
+        </div>
         <button class="primary" id="load" type="submit" disabled>Search tenders</button>
       </form>
+      <p id="award-note" class="award-note" hidden>Contract values are rounded as published in the award list. Open the official award for the exact price and notification date. Search keywords match titles; use the Winner column to filter companies in loaded results.</p>
       <section class="quick-filters" aria-labelledby="quick-filters-title">
         <div class="quick-filter-heading">
           <h2 id="quick-filters-title">Quick filters</h2>
@@ -91,25 +107,34 @@
         </div>
       </div>
       <p class="search-failures" id="save-tender-feedback" role="status" hidden></p>
-      <div class="table-scroll" role="region" aria-label="Tender notices table" tabindex="0">
+      <div class="table-scroll" role="region" aria-label="Search results table" tabindex="0">
         <table id="tender-table">
           <colgroup>
-            <col class="col-save"><col class="col-id"><col class="col-title"><col class="col-nature"><col class="col-method">
-            <col class="col-ministry"><col class="col-org"><col class="col-entity">
-            <col class="col-date"><col class="col-date"><col class="col-status"><col class="col-url">
+            <col class="col-save"><col class="col-id"><col class="col-id" data-record-type="awards" hidden><col class="col-title">
+            <col class="col-nature" data-record-type="tenders"><col class="col-method">
+            <col class="col-ministry"><col class="col-org" data-record-type="tenders"><col class="col-entity">
+            <col class="col-nature" data-record-type="awards" hidden><col class="col-winner" data-record-type="awards" hidden><col class="col-value" data-record-type="awards" hidden>
+            <col class="col-date" data-record-type="tenders"><col class="col-date" data-record-type="tenders"><col class="col-status" data-record-type="tenders">
+            <col class="col-date" data-record-type="awards" hidden><col class="col-date" data-record-type="awards" hidden><col class="col-url">
           </colgroup>
           <thead><tr>
             <th class="save-cell" scope="col">Save</th>
             <th scope="col" data-filter="id" data-filter-type="text">ID</th>
+            <th scope="col" data-filter="lotId" data-filter-type="text" data-record-type="awards" hidden>Lot ID</th>
             <th scope="col" data-filter="title" data-filter-type="text">Title</th>
-            <th scope="col" data-filter="nature" data-filter-type="values">Nature</th>
+            <th scope="col" data-filter="nature" data-filter-type="values" data-record-type="tenders">Nature</th>
             <th scope="col" data-filter="methodLabel" data-filter-type="values">Method label</th>
             <th scope="col" data-filter="ministry" data-filter-type="values">Ministry</th>
-            <th scope="col" data-filter="organization" data-filter-type="values">Organization</th>
+            <th scope="col" data-filter="organization" data-filter-type="values" data-record-type="tenders">Organization</th>
             <th scope="col" data-filter="procuringEntity" data-filter-type="values">Procuring entity</th>
-            <th scope="col" data-filter="publishedAt" data-filter-type="date">Published date</th>
-            <th scope="col" data-filter="closingAt" data-filter-type="date">Closing date</th>
-            <th scope="col" data-filter="status" data-filter-type="values">Status</th>
+            <th scope="col" data-filter="district" data-filter-type="values" data-record-type="awards" hidden>District</th>
+            <th scope="col" data-filter="winnerName" data-filter-type="values" data-record-type="awards" hidden>Winner</th>
+            <th scope="col" data-filter="contractValueBdt" data-filter-type="number" data-record-type="awards" hidden>Value (BDT, rounded)</th>
+            <th scope="col" data-filter="publishedAt" data-filter-type="date" data-record-type="tenders">Published date</th>
+            <th scope="col" data-filter="closingAt" data-filter-type="date" data-record-type="tenders">Closing date</th>
+            <th scope="col" data-filter="status" data-filter-type="values" data-record-type="tenders">Status</th>
+            <th scope="col" data-filter="advertisedAt" data-filter-type="date" data-record-type="awards" hidden>Advertised date</th>
+            <th scope="col" data-filter="contractSignedOn" data-filter-type="date" data-record-type="awards" hidden>Signed date</th>
             <th scope="col">URL</th>
           </tr></thead>
           <tbody id="rows"></tbody>
@@ -121,7 +146,7 @@
           <p id="summary" aria-live="polite"></p>
           <p id="cache-note" hidden></p>
         </div>
-        <nav id="pagination" class="pagination" aria-label="Tender result pages" hidden>
+        <nav id="pagination" class="pagination" aria-label="Search result pages" hidden>
           <button id="previous" type="button" disabled>Previous</button>
           <span id="page-number" aria-live="polite"></span>
           <button id="next" type="button" disabled>Next</button>
@@ -136,9 +161,13 @@
       <button class="secondary" id="close-saved-tenders" type="button" autofocus>Done</button>
     </div>
     <div class="dialog-content">
+      <div class="filter saved-type-filter">
+        <label for="saved-record-type">Show saved</label>
+        <select id="saved-record-type"><option value="tenders">Live tenders</option><option value="awards">Contract awards</option></select>
+      </div>
       <p class="search-failures" id="saved-tenders-feedback" role="status" hidden></p>
       <p class="message" id="saved-tenders-empty" role="status" hidden>Star a tender to find it here later.</p>
-      <div class="table-scroll" id="saved-table-region" role="region" aria-label="Saved tender notices" tabindex="0" hidden>
+      <div class="table-scroll" id="saved-table-region" role="region" aria-label="Saved records" tabindex="0" hidden>
         <table id="saved-table"><tbody id="saved-rows"></tbody></table>
       </div>
     </div>
@@ -151,6 +180,10 @@
     <div class="dialog-content">
       <form class="dialog-form" id="quick-filter-form">
         <div class="filter wide-filter">
+          <label for="quick-record-type">Search for</label>
+          <select id="quick-record-type" name="recordType"><option value="tenders">Live tenders</option><option value="awards">Contract awards</option></select>
+        </div>
+        <div class="filter wide-filter">
           <label for="quick-name">Shortcut name <span>(optional)</span></label>
           <input id="quick-name" name="name" type="text" maxlength="80">
         </div>
@@ -159,7 +192,7 @@
           <button id="quick-ministry" class="ministry-toggle" type="button" aria-expanded="false" aria-controls="quick-ministry-options" aria-labelledby="quick-ministry-label quick-ministry" autofocus>Select ministries</button>
           <div id="quick-ministry-options" class="ministry-options" role="group" aria-labelledby="quick-ministry-label" hidden></div>
         </div>
-        <div class="filter">
+        <div class="filter" id="quick-nature-filter">
           <label for="quick-nature">Procurement nature</label>
           <select id="quick-nature" name="procurementNature"></select>
         </div>
@@ -175,9 +208,17 @@
           <label for="quick-method">Procurement method</label>
           <select id="quick-method" name="method"><option value="">All methods</option></select>
         </div>
-        <div class="filter">
+        <div class="filter" id="quick-published-filter">
           <label for="quick-published">Published since</label>
           <input id="quick-published" name="publishedSince" type="text" maxlength="80" placeholder="e.g. 7 days or 2026-11-01">
+        </div>
+        <div class="filter" id="quick-signed-filter" hidden>
+          <label for="quick-signed">Contract signed since</label>
+          <input id="quick-signed" name="signedSince" type="text" maxlength="80" placeholder="e.g. 30 days or 2026-01-01">
+        </div>
+        <div class="filter" id="quick-district-filter" hidden>
+          <label for="quick-district">District</label>
+          <input id="quick-district" name="district" type="text" maxlength="100" placeholder="e.g. Dhaka or Chattogram">
         </div>
         <button class="primary" id="save-quick-filter" type="submit" disabled>Save quick filter</button>
       </form>

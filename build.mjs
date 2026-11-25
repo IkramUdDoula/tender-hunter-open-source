@@ -9,6 +9,7 @@ const files = {
   '/saved-tenders.js': ['saved-tenders.js', 'text/javascript'],
   '/search-cache.js': ['search-cache.js', 'text/javascript'],
   '/search-status.js': ['search-status.js', 'text/javascript'],
+  '/records.js': ['records.js', 'text/javascript'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
 };
 

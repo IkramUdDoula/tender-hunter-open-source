@@ -11,7 +11,17 @@ Dates and times in the table use Bangladesh time. The search covers live notices
 
 Searches default to 5,000 notices and 10 minutes per ministry. If a search reaches its time or record limit, or completeness cannot be verified, **Partial results** identifies the affected ministries. Counts cover loaded notices only, so a targeted search may find additional matches. Partial results are not cached. Narrow the search criteria or refresh results to try again.
 
-## Filter and sort search results
+## Search contract awards
+
+Choose **Contract awards** under **Search for**, choose ministries, and optionally enter a title keyword or **Contract signed since** window such as `30 days` or `2026-01-01`. Select **Search awards**. The procurement-nature filter applies only to live tenders and is replaced by the signing-date filter in award mode. **Manage quick filters** also supports award districts, procurement methods and organization or procuring entity.
+
+Awards show the winner, tender ID, lot ID, district, signing date and rounded value. The list's value is rounded to three decimal places of crore taka; open the official award for the exact contract price and notification date. The signing date is a calendar date, displayed without a time. Non-BDT amounts retain their published text and are excluded from numeric BDT filters.
+
+The title keyword does not search winner names. Use the **Winner** column to select companies among the loaded results and **Value (BDT, rounded)** to filter an inclusive numeric range. A capped or timed-out search is partial, so an absent company is not evidence that it has never won. Filtered award searches scan at most the newest 50,000 source records; narrow by keyword or signing-date window. Changing the record type clears column filters and sorting. Complete award and tender searches are cached separately for six hours.
+
+Star awards to save them. **Saved awards** in the header opens their table; the dialog's **Show saved** selector switches between tenders and awards. Each lot is saved separately, even if the tender ID matches another lot. Existing saved tender notices and quick filters are retained.
+
+## Filter and sort loaded results
 
 Select a column heading to open its filter. Use a text match for ID or title, a date range for publication or closing dates, or a searchable checklist for columns such as organization and method. Checklist counts reflect the other applied column filters across all pages. Multiple values within a column match any selected value. Filters on different columns must all match.
 

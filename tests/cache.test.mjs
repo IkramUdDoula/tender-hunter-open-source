@@ -33,6 +33,18 @@ async function cacheFixture() {
 }
 const complete = { tenders: [{ id: '1364024' }], complete: true, stopReason: 'end_of_list', cappedAt: null };
 
+test('award and tender searches and signing-date criteria never share cached datasets', async () => {
+  const { search } = await cacheFixture();
+  let calls = 0;
+  const fetch = async () => { calls++; return complete; };
+  const queries = ['recordType=tenders&ministry=all', 'recordType=awards&ministry=all',
+    'recordType=awards&ministry=all&signedSince=2026-11-01', 'recordType=awards&ministry=all&district=Dhaka'];
+  for (const query of queries) await search(new URLSearchParams(query), fetch);
+  assert.equal(calls, 4);
+  for (const query of queries) assert.equal(typeof (await search(new URLSearchParams(query), fetch)).cachedAt, 'number');
+  assert.equal(calls, 4);
+});
+
 test('old cached results are bypassed, confirmed results are reused, and refresh bypasses them', async () => {
   const { search, entries } = await cacheFixture();
   entries.set('ministry=162', { expiresAt: Date.now() + 60000, results: { tenders: [], cappedAt: null } });

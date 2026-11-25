@@ -2,6 +2,7 @@ import { createTableColumns } from './column-filters.js';
 import { createSavedTenders } from './saved-tenders.js';
 import { cachedSearch } from './search-cache.js';
 import { isCompleteSearch, partialSearchMessage } from './search-status.js';
+import { formatCalendarDate, formatContractValue, recordType, setTableType } from './records.js';
 
 const locale = { timeZone: 'Asia/Dhaka' };
 const dateFormat = new Intl.DateTimeFormat('en-GB', { ...locale, day: '2-digit', month: 'short', year: 'numeric' });
@@ -14,6 +15,9 @@ const load = byId('load');
 const ministries = new Map([['all', 'All ministries']]);
 const ministry = ministryPicker('ministry', returnToManualFilters);
 const nature = byId('procurementNature');
+const searchType = byId('record-type');
+const keyword = byId('keyword');
+const signedSince = byId('signed-since');
 const manageFilters = byId('manage-filters');
 const chipList = byId('quick-filter-chips');
 const filterDialog = byId('filter-dialog');
@@ -21,10 +25,11 @@ const quickForm = byId('quick-filter-form');
 const quickMinistry = ministryPicker('quick-ministry', updateQuickSave);
 const quickNature = byId('quick-nature');
 const quickMethod = byId('quick-method');
+const quickType = byId('quick-record-type');
 const filterFeedback = byId('filter-feedback');
 const savedList = byId('saved-filters');
 const storageKey = 'tender-hunter.quick-filters';
-const extraFields = ['keyword', 'organization', 'method', 'publishedSince'];
+const extraFields = ['keyword', 'organization', 'method', 'publishedSince', 'signedSince', 'district'];
 const tenderTable = byId('tender-table');
 const rows = byId('rows');
 const message = byId('message');
@@ -61,7 +66,7 @@ const tableColumns = createTableColumns(tenderTable, (tenders, hasFilters) => {
 function updateControls() {
   const disabled = busy || !catalogReady;
   ministry.disable(disabled);
-  nature.disabled = manageFilters.disabled = disabled;
+  nature.disabled = searchType.disabled = keyword.disabled = signedSince.disabled = manageFilters.disabled = disabled;
   load.disabled = disabled || !ministry.values.length;
   refresh.hidden = !result;
   refresh.disabled = disabled || !result;
@@ -70,6 +75,23 @@ function updateControls() {
     chip.setAttribute('aria-pressed', String(savedFilters[index] === activeFilter));
   }
   byId('clear-filter').disabled = busy;
+}
+
+function updateSearchType() {
+  const award = searchType.value === 'awards';
+  byId('nature-filter').hidden = award;
+  byId('signed-filter').hidden = !award;
+  byId('award-note').hidden = !award;
+  load.textContent = award ? 'Search awards' : 'Search tenders';
+  byId('open-saved-tenders').textContent = award ? 'Saved awards' : 'Saved tenders';
+  setTableType(tenderTable, searchType.value);
+  savedTenders.setType(searchType.value);
+}
+
+function updateQuickType() {
+  const award = quickType.value === 'awards';
+  byId('quick-nature-filter').hidden = byId('quick-published-filter').hidden = award;
+  byId('quick-signed-filter').hidden = byId('quick-district-filter').hidden = !award;
 }
 
 function ministryPicker(id, onChange) {
@@ -136,12 +158,15 @@ function optionLabel(select, value) {
 
 function filterDescription(filter) {
   return [
+    filter.recordType === 'awards' ? 'Contract awards' : 'Live tenders',
     filter.ministries.map(id => ministries.get(id)).join(', '),
-    optionLabel(nature, filter.procurementNature),
+    filter.recordType !== 'awards' && optionLabel(nature, filter.procurementNature),
     filter.keyword && `Keyword ${filter.keyword}`,
     filter.organization && `Organization or PE ${filter.organization}`,
     filter.method && `Method ${filter.method}`,
     filter.publishedSince && `Published since ${filter.publishedSince}`,
+    filter.signedSince && `Signed since ${filter.signedSince}`,
+    filter.district && `District ${filter.district}`,
   ].filter(Boolean).join(' · ');
 }
 
@@ -165,7 +190,11 @@ function renderQuickFilters() {
     chip.title = details;
     chip.addEventListener('click', () => {
       ministry.set(filter.ministries);
+      searchType.value = filter.recordType;
       nature.value = filter.procurementNature;
+      keyword.value = filter.keyword;
+      signedSince.value = filter.signedSince;
+      updateSearchType();
       showActiveFilter(filter);
       updateControls();
       form.requestSubmit();
@@ -217,7 +246,9 @@ function readQuickFilters() {
     if (!Array.isArray(filters)) return [];
     const fields = ['name', 'procurementNature', ...extraFields];
     return filters.flatMap(filter => {
+      filter = { recordType: 'tenders', signedSince: '', district: '', ...filter };
       if (!filter || !fields.every(field => typeof filter[field] === 'string')
+        || !['tenders', 'awards'].includes(filter.recordType)
         || !optionLabel(nature, filter.procurementNature) || !optionLabel(quickMethod, filter.method)) return [];
       const { ministry: legacyMinistry, ministries: savedMinistries, ...criteria } = filter;
       const values = Array.isArray(savedMinistries) ? savedMinistries : [legacyMinistry];
@@ -263,30 +294,55 @@ function noticeCell(row, tender) {
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.textContent = 'Open ↗';
-  link.setAttribute('aria-label', `Open tender ${tender.id} on e-GP in a new tab`);
+  link.setAttribute('aria-label', `Open ${recordType(tender) === 'awards' ? 'award' : 'tender'} ${tender.id} on e-GP in a new tab`);
   target.replaceChildren(link);
 }
 
 function tenderRow(tender) {
   const row = document.createElement('tr');
+  const type = recordType(tender);
+  function typedCell(value, mode, className) {
+    const element = cell(row, value, className);
+    element.dataset.recordType = mode;
+    element.hidden = mode !== type;
+    return element;
+  }
+  function typedDate(value, mode) {
+    dateCell(row, value);
+    const element = row.lastElementChild;
+    element.dataset.recordType = mode;
+    element.hidden = mode !== type;
+  }
   const save = cell(row, '', 'save-cell');
   const star = savedTenders.createButton(tender);
   if (star) save.append(star);
   cell(row, tender.id, 'tender-id');
+  typedCell(tender.lotId, 'awards', 'tender-id');
   cell(row, tender.title, 'title');
-  cell(row, tender.nature);
+  typedCell(tender.nature, 'tenders');
   cell(row, tender.methodLabel);
   cell(row, tender.ministry);
-  cell(row, tender.organization);
+  typedCell(tender.organization, 'tenders');
   cell(row, tender.procuringEntity);
-  dateCell(row, tender.publishedAt);
-  dateCell(row, tender.closingAt);
-  const status = cell(row);
+  typedCell(tender.district, 'awards');
+  typedCell(tender.winnerName, 'awards');
+  typedCell(formatContractValue(tender), 'awards', 'contract-value');
+  typedDate(tender.publishedAt, 'tenders');
+  typedDate(tender.closingAt, 'tenders');
+  const status = typedCell(undefined, 'tenders');
   if (tender.status) {
     const badge = document.createElement('span');
     badge.className = tender.status.toLowerCase() === 'live' ? 'status live' : 'status';
     badge.textContent = tender.status;
     status.replaceChildren(badge);
+  }
+  typedDate(tender.advertisedAt, 'awards');
+  const signed = typedCell(formatCalendarDate(tender.contractSignedOn), 'awards', 'date');
+  if (tender.contractSignedOn && signed.textContent !== '-') {
+    const time = document.createElement('time');
+    time.dateTime = tender.contractSignedOn;
+    time.textContent = signed.textContent;
+    signed.replaceChildren(time);
   }
   noticeCell(row, tender);
   return row;
@@ -329,7 +385,7 @@ function renderPage(pageNumber) {
 
   const count = filtered
     ? `${total.toLocaleString()} ${total === 1 ? 'match' : 'matches'} out of ${result.tenders.length.toLocaleString()}`
-    : `${total.toLocaleString()} ${total === 1 ? 'tender' : 'tenders'}`;
+    : `${total.toLocaleString()} ${searchType.value === 'awards' ? total === 1 ? 'award' : 'awards' : total === 1 ? 'tender' : 'tenders'}`;
   const partial = result && (remainingSearches > 0 || result.partialSearches.length > 0);
   const scopedCount = partial ? `${count} loaded` : count;
   const summary = byId('summary');
@@ -341,10 +397,11 @@ function renderPage(pageNumber) {
 }
 
 function updateResultStatus() {
-  const noMatches = filtered ? 'No loaded tenders match these column filters.' : result.partialSearches.length
-    ? 'No tenders loaded. Narrow the search filters or refresh results to try again.' : 'No open tenders found for this search.';
+  const noun = searchType.value === 'awards' ? 'awards' : 'tenders';
+  const noMatches = filtered ? `No loaded ${noun} match these column filters.` : result.partialSearches.length
+    ? `No ${noun} loaded. Narrow the search filters or refresh results to try again.` : `No ${noun === 'tenders' ? 'open tenders' : 'contract awards'} found for this search.`;
   showMessage(visibleTenders.length || remainingSearches ? '' : noMatches);
-  cap.textContent = partialSearchMessage(result.partialSearches);
+  cap.textContent = partialSearchMessage(result.partialSearches, searchType.value === 'awards' ? 'award' : 'notice');
   cap.hidden = !cap.textContent;
 }
 
@@ -352,7 +409,7 @@ async function request(path, options) {
   const response = await fetch(path, options);
   if (response.status === 401) window.location.assign('/login');
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Could not load tenders.');
+  if (!response.ok) throw new Error(data.error || 'Could not load results.');
   return data;
 }
 
@@ -391,7 +448,7 @@ async function fetchSearch(query) {
     if (!nextBatch.tenders.length || nextBatch.total !== total) throw new Error('The search results changed. Search again to retry.');
     tenders.push(...nextBatch.tenders);
   }
-  if (tenders.length !== total) throw new Error('Could not load all tender results.');
+  if (tenders.length !== total) throw new Error('Could not load all search results.');
   return { tenders, cappedAt, complete, stopReason };
 }
 
@@ -458,8 +515,13 @@ form.addEventListener('submit', event => {
   event.preventDefault();
   if (load.disabled) return;
   const query = new URLSearchParams();
-  if (nature.value) query.set('procurementNature', nature.value);
-  for (const field of extraFields) if (activeFilter?.[field]) query.set(field, activeFilter[field]);
+  query.set('recordType', searchType.value);
+  const award = searchType.value === 'awards';
+  if (!award && nature.value) query.set('procurementNature', nature.value);
+  const applicable = award ? ['organization', 'method', 'district'] : ['organization', 'method', 'publishedSince'];
+  for (const field of applicable) if (activeFilter?.[field]) query.set(field, activeFilter[field]);
+  if (keyword.value.trim()) query.set('keyword', keyword.value.trim());
+  if (award && signedSince.value.trim()) query.set('signedSince', signedSince.value.trim());
   clearResults();
   loadResults(query, [...ministry.values], event.submitter === refresh);
 });
@@ -470,6 +532,11 @@ manageFilters.addEventListener('click', () => {
   quickMinistry.close();
   updateQuickSave();
   quickNature.value = nature.value;
+  quickType.value = searchType.value;
+  byId('quick-keyword').value = keyword.value;
+  byId('quick-signed').value = signedSince.value;
+  if (activeFilter) for (const field of extraFields) quickForm.elements[field].value = activeFilter[field];
+  updateQuickType();
   filterFeedback.hidden = true;
   filterDialog.showModal();
 });
@@ -481,7 +548,9 @@ quickForm.addEventListener('submit', event => {
     ...Object.fromEntries(Array.from(new FormData(quickForm), ([field, value]) => [field, value.trim()])),
     ministries: [...quickMinistry.values],
   };
-  const criteria = ['procurementNature', ...extraFields];
+  if (filter.recordType === 'awards') filter.procurementNature = filter.publishedSince = '';
+  else filter.signedSince = filter.district = '';
+  const criteria = ['recordType', 'procurementNature', ...extraFields];
   if (savedFilters.some(saved => saved.ministries.length === filter.ministries.length
     && saved.ministries.every(id => filter.ministries.includes(id))
     && criteria.every(field => saved[field] === filter[field]))) {
@@ -495,9 +564,14 @@ quickForm.addEventListener('submit', event => {
 function returnToManualFilters() {
   showActiveFilter();
   clearResults();
-  showMessage(ministry.values.length ? 'Select Search tenders to apply your filters.' : 'Choose ministries to search for tenders.');
+  const noun = searchType.value === 'awards' ? 'awards' : 'tenders';
+  showMessage(ministry.values.length ? `Select Search ${noun} to apply your filters.` : `Choose ministries to search for ${noun}.`);
 }
 
+searchType.addEventListener('change', () => { updateSearchType(); returnToManualFilters(); });
+quickType.addEventListener('change', updateQuickType);
+keyword.addEventListener('change', returnToManualFilters);
+signedSince.addEventListener('change', returnToManualFilters);
 nature.addEventListener('change', returnToManualFilters);
 byId('clear-filter').addEventListener('click', returnToManualFilters);
 pageSizeSelect.addEventListener('change', () => renderPage(1));
@@ -516,3 +590,4 @@ request('/api/catalog').then(({ catalog, procurementMethods, loginEnabled }) => 
   renderQuickFilters();
 }).catch(() => showMessage('Could not load the ministry list. Reload the page to try again.', true));
 refreshUsage();
+updateSearchType();

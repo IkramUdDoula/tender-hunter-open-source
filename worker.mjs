@@ -2,6 +2,7 @@ const api = 'https://api.apify.com/v2';
 const pageSize = 20;
 const batchSize = 500;
 const tenderFields = 'tenderId,title,procurementNatureLabel,procurementNature,methodLabel,ministry,organization,procuringEntity,publishedAt,closingAt,status,detailUrl';
+const awardFields = 'tenderId,lotId,title,method,methodLabel,ministry,division,procuringEntity,district,advertisedAt,contractSignedOn,winnerName,contractValueBdt,contractValueCrore,contractValueText,detailUrl';
 const searchLifetime = 60 * 60 * 1000;
 const searches = new Map();
 const procurementNatures = new Set(['goods', 'works', 'services', 'physicalServices']);
@@ -52,6 +53,13 @@ async function callApify(token, endpoint, { query, input, text = false } = {}) {
 }
 
 async function startSearch(token, query, limit, timeoutSeconds) {
+  const recordType = query.get('recordType') ?? 'tenders';
+  if (!['tenders', 'awards'].includes(recordType)) throw new RequestError('Choose live tenders or contract awards.', 400);
+  const award = recordType === 'awards';
+  const incompatible = award ? ['procurementNature', 'publishedSince'] : ['signedSince', 'district'];
+  if (incompatible.some(field => query.get(field)?.trim())) {
+    throw new RequestError(`These filters do not apply to ${award ? 'contract awards' : 'live tenders'}: ${incompatible.join(', ')}.`, 400);
+  }
   const ministryId = query.get('ministry');
   const ministry = ministryById.get(ministryId);
   if (ministryId !== 'all' && !ministry) throw new RequestError('Choose a ministry or All ministries.', 400);
@@ -59,26 +67,27 @@ async function startSearch(token, query, limit, timeoutSeconds) {
   if (procurementNature && !procurementNatures.has(procurementNature)) {
     throw new RequestError('Choose a valid procurement nature.', 400);
   }
-  const input = { recordType: 'tenders', maxItems: limit };
+  const input = { recordType, maxItems: limit };
   if (ministry) input.ministry = ministry;
   if (procurementNature) input.procurementNature = procurementNature;
   const method = query.get('method');
   if (method && !procurementMethods.includes(method)) throw new RequestError('Choose a valid procurement method.', 400);
   if (method) input.method = method;
 
-  for (const [field, maxLength] of [['keyword', 200], ['organization', 200], ['publishedSince', 80]]) {
+  const fields = [['keyword', 200], ['organization', 200], ...(award ? [['signedSince', 80], ['district', 100]] : [['publishedSince', 80]])];
+  for (const [field, maxLength] of fields) {
     const value = query.get(field)?.trim();
     if (value && value.length > maxLength) throw new RequestError(`The ${field} filter is too long.`, 400);
     if (value) input[field] = value;
   }
   const { data } = await callApify(token, '/acts/a-g-d~bd-egp/runs', { query: { timeout: timeoutSeconds }, input });
-  if (!data.data?.id) throw new RequestError('Apify did not return a tender search ID.', 502);
+  if (!data.data?.id) throw new RequestError('Apify did not return a search ID.', 502);
 
   for (const [id, search] of searches) {
     if (Date.now() >= search.expiresAt) searches.delete(id);
   }
   const searchId = crypto.randomUUID();
-  searches.set(searchId, { runId: data.data.id, limit, ministry, expiresAt: Date.now() + timeoutSeconds * 1000 + searchLifetime });
+  searches.set(searchId, { runId: data.data.id, recordType, limit, ministry, expiresAt: Date.now() + timeoutSeconds * 1000 + searchLifetime });
   return { searchId, timeoutSeconds };
 }
 
@@ -103,7 +112,7 @@ async function datasetItems(token, datasetId, query) {
   const count = headers.get('X-Apify-Pagination-Total');
   const total = Number(count);
   if (count === null || !Number.isSafeInteger(total) || total < 0) {
-    throw new RequestError('Apify returned an invalid tender count.', 502);
+    throw new RequestError('Apify returned an invalid result count.', 502);
   }
   return { items: data, total };
 }
@@ -113,7 +122,7 @@ async function prepareDataset(token, search) {
   const run = data.data;
   if (['READY', 'RUNNING', 'TIMING-OUT', 'ABORTING'].includes(run?.status)) return false;
   if (run?.status !== 'SUCCEEDED' || !run.defaultDatasetId) {
-    throw new RequestError(`The Apify tender run ended with status ${run?.status ?? 'unknown'}. Start a new search to retry.`, 502);
+    throw new RequestError(`The Apify run ended with status ${run?.status ?? 'unknown'}. Start a new search to retry.`, 502);
   }
 
   // The actor matches substrings. Use the ministry field to count exact matches before paging notices.
@@ -146,7 +155,7 @@ async function prepareDataset(token, search) {
   return true;
 }
 
-async function readFilteredPage(token, datasetId, positions, size) {
+async function readFilteredPage(token, datasetId, positions, size, fields) {
   const ranges = [];
   for (const position of positions) {
     const range = ranges.at(-1);
@@ -157,7 +166,7 @@ async function readFilteredPage(token, datasetId, positions, size) {
   const notices = [];
   for (let start = 0; start < ranges.length; start += 4) {
     const pages = await Promise.all(ranges.slice(start, start + 4).map(async ({ offset, positions }) => {
-      const { items } = await datasetItems(token, datasetId, { offset, limit: positions.at(-1) - offset + 1, fields: tenderFields });
+      const { items } = await datasetItems(token, datasetId, { offset, limit: positions.at(-1) - offset + 1, fields });
       return positions.map(position => items[position - offset]);
     }));
     notices.push(...pages.flat());
@@ -167,6 +176,7 @@ async function readFilteredPage(token, datasetId, positions, size) {
 
 function mapTender(item) {
   return {
+    recordType: 'tender',
     id: item.tenderId,
     title: item.title,
     nature: item.procurementNatureLabel ?? item.procurementNature,
@@ -177,6 +187,27 @@ function mapTender(item) {
     publishedAt: item.publishedAt,
     closingAt: item.closingAt,
     status: item.status,
+    url: item.detailUrl,
+  };
+}
+
+function mapAward(item) {
+  return {
+    recordType: 'award',
+    id: item.tenderId,
+    lotId: item.lotId,
+    title: item.title,
+    ministry: item.ministry,
+    division: item.division,
+    procuringEntity: item.procuringEntity,
+    methodLabel: item.methodLabel ?? item.method,
+    district: item.district,
+    advertisedAt: item.advertisedAt,
+    contractSignedOn: item.contractSignedOn,
+    winnerName: item.winnerName,
+    contractValueBdt: typeof item.contractValueBdt === 'number' && Number.isFinite(item.contractValueBdt) ? item.contractValueBdt : null,
+    contractValueCrore: item.contractValueCrore,
+    contractValueText: item.contractValueText,
     url: item.detailUrl,
   };
 }
@@ -193,20 +224,24 @@ async function getPage(token, searchId, page, size) {
   if (!search.datasetId && !await prepareDataset(token, search)) return null;
 
   const offset = (page - 1) * size;
+  const fields = search.recordType === 'awards' ? awardFields : tenderFields;
+  const map = search.recordType === 'awards' ? mapAward : mapTender;
   if (!search.ministry) {
     const limit = Math.min(size, search.limit - offset);
-    const { items, total } = await datasetItems(token, search.datasetId, { offset, limit, fields: tenderFields });
+    const { items, total } = await datasetItems(token, search.datasetId, { offset, limit, fields });
     return {
-      tenders: items.map(mapTender),
+      recordType: search.recordType,
+      tenders: items.map(map),
       page,
       total: Math.min(total, search.limit),
       ...search.completion,
     };
   }
 
-  const items = await readFilteredPage(token, search.datasetId, search.positions.slice(offset, offset + size), size);
+  const items = await readFilteredPage(token, search.datasetId, search.positions.slice(offset, offset + size), size, fields);
   return {
-    tenders: items.map(mapTender),
+    recordType: search.recordType,
+    tenders: items.map(map),
     page,
     total: search.positions.length,
     ...search.completion,
@@ -255,7 +290,7 @@ export default {
         return page ? json(page) : json({ status: 'loading' }, 202);
       } catch (error) {
         if (error instanceof RequestError) return json({ error: error.message }, error.status);
-        return json({ error: 'Could not load tenders from Apify. Try again in a moment.' }, 502);
+        return json({ error: 'Could not load results from Apify. Try again in a moment.' }, 502);
       }
     }
 

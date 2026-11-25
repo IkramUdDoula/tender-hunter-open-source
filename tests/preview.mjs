@@ -6,6 +6,11 @@ import { workerFixture, notices, rail, road, railIds, roadIds } from './worker-f
 let mode = 'partial';
 const fixture = await workerFixture(input => {
   const ministry = input.ministry;
+  if (input.recordType === 'awards') return { items: [
+    { tenderId: 'fixture-award', lotId: 'lot-1', title: 'Fixture toll system', ministry: ministry ?? rail, method: 'RFQU', winnerName: 'Fixture Systems Ltd', district: 'Dhaka', contractValueBdt: 12780000, contractSignedOn: '2026-11-01' },
+    { tenderId: 'fixture-award', lotId: 'lot-2', title: 'Fixture toll operations', ministry: ministry ?? rail, method: 'OTM', winnerName: 'Fixture Operations Ltd', district: 'Dhaka', contractValueBdt: 1490000, contractSignedOn: '2026-10-29' },
+    { tenderId: 'fixture-award-2', lotId: 'lot-3', title: 'Fixture software', ministry: ministry ?? rail, method: 'QCBS', winnerName: 'Fixture Software Ltd', district: 'Dhaka', contractValueBdt: null, contractValueText: 'USD 150', contractSignedOn: '2026-09-20' },
+  ].map(item => ({ ...item, advertisedAt: '2026-09-01T10:00:00+06:00', detailUrl: 'https://www.eprocure.gov.bd/' })) };
   const physical = ministry === rail ? railIds : roadIds;
   if (input.procurementNature) return { items: notices(ministry, physical, physical.length) };
   if (mode === 'partial') return {

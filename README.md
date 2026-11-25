@@ -1,12 +1,15 @@
 # Tender Hunter
 
-Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tender notices. It searches the [Bangladesh e-GP actor on Apify](https://apify.com/a-g-d/bd-egp) and links results to their official notices.
+Tender Hunter is a self-hosted browser app for finding live Bangladesh e-GP tender notices and awarded contracts. It searches the [Bangladesh e-GP actor on Apify](https://apify.com/a-g-d/bd-egp) and links results to their official notices and awards.
 
 - Select one or more ministries or search across all ministries, with an optional procurement nature. Results appear as each search finishes.
 - Save named quick filters with keywords, organizations, procuring entities, methods, and publication windows.
 - Filter and sort loaded results using the column controls. Confirmed complete searches are reused in the same browser for six hours; **Refresh results** starts a fresh search.
 - Show 20, 100, or all matching notices and track your Apify account usage from the app.
 - Star notices and reopen them in the Saved tenders table whenever you return in the same browser.
+- Switch to **Contract awards** to see winners, lot IDs, signing dates and rounded contract values. Filter by title, signing-date window and district, or filter loaded results by winner and BDT value range. Tender and award results use separate cache keys; saved awards are identified by tender and lot.
+
+Award-list values are rounded to three decimal places of crore taka. Open the official award page for the exact price and Notification of Award date. Signing dates are calendar dates and are displayed without a timezone shift. Company names are filtered within loaded results; the upstream keyword filter searches titles. Filtered award searches can scan at most the newest 50,000 source records, so use keywords and signing-date windows for focused searches.
 
 Sign-in lasts for 30 days in the same browser, unless you sign out, clear cookies, or the app password changes.
 

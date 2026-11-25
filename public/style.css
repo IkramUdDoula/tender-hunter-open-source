@@ -57,11 +57,13 @@ h1 { margin: 0; font-size: clamp(34px, 4.3vw, 52px); font-weight: 750; line-heig
 .primary:disabled { opacity: .72; }
 
 .results { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 5px 18px #1d38240b; }
-.toolbar { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 230px) max-content; align-items: start; padding: 16px 20px; gap: 14px; }
+.toolbar { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(180px, 1.3fr) minmax(150px, 1fr) minmax(150px, 1fr) max-content; align-items: start; padding: 16px 20px; gap: 14px; }
 .toolbar > .primary { margin-top: 22px; min-height: 44px; }
 .filter { min-width: 0; display: grid; gap: 7px; }
 .filter label { font-size: 12px; font-weight: 650; }
-select, .dialog-form input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #b9cdbf; border-radius: 8px; color: #254737; background-color: #f8fbf8; padding: 0 12px; font-size: 14px; text-overflow: ellipsis; }
+select, .dialog-form input, .toolbar input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #b9cdbf; border-radius: 8px; color: #254737; background-color: #f8fbf8; padding: 0 12px; font-size: 14px; text-overflow: ellipsis; }
+.award-note { margin: 0; padding: 0 20px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.saved-type-filter { max-width: 260px; margin: 14px 20px; }
 select { appearance: none; cursor: pointer; padding-inline-end: 36px; background-image: linear-gradient(45deg, transparent 50%, #31634d 50%), linear-gradient(135deg, #31634d 50%, transparent 50%); background-position: right 17px center, right 12px center; background-size: 5px 5px; background-repeat: no-repeat; }
 select:hover:not(:disabled), .dialog-form input:hover { border-color: #6e9b81; background-color: #eff7f0; }
 select:focus, .dialog-form input:focus { border-color: var(--accent); background-color: #fff; }
@@ -149,6 +151,9 @@ table { width: 100%; min-width: 1400px; border-collapse: collapse; table-layout:
 .col-date { width: 122px; }
 .col-status { width: 102px; }
 .col-url { width: 68px; }
+.col-winner { width: 180px; }
+.col-value { width: 155px; }
+.contract-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 th { background: #edf2ec; color: #385345; font-size: 11px; font-weight: 700; white-space: nowrap; padding: 14px 12px; }
 th[data-filter] { padding: 6px 8px; }
 .column-controls { display: flex; align-items: center; gap: 2px; }
@@ -187,6 +192,11 @@ tbody tr:hover { background: #f8faf7; }
 .source-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 20px; padding: 18px 0 30px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .source-footer a { margin-left: 4px; }
 
+@media (max-width: 1050px) {
+  .toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toolbar > .primary { margin-top: 0; justify-self: start; }
+}
+
 @media (max-width: 700px) {
   .shell { width: calc(100% - 32px); }
   .masthead-inner { min-height: 56px; }
@@ -208,7 +218,7 @@ tbody tr:hover { background: #f8faf7; }
   .masthead-inner { padding-block: 10px; }
   .usage { width: 100%; }
   .toolbar .primary, .dialog-form .primary { justify-self: stretch; }
-  select, .dialog-form input, .login-form input, .column-filter-field input { font-size: 16px; }
+  select, .toolbar input, .dialog-form input, .login-form input, .column-filter-field input { font-size: 16px; }
   .dialog-heading, .dialog-content { padding-inline: 14px; }
 }
 

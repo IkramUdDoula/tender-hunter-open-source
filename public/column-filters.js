@@ -66,6 +66,25 @@ function dateEditor(current, content) {
   };
 }
 
+function numberEditor(current, content) {
+  const range = document.createElement('div');
+  range.className = 'column-filter-range';
+  const [minField, min] = input('column-min', 'Minimum BDT', 'number', current?.min);
+  const [maxField, max] = input('column-max', 'Maximum BDT', 'number', current?.max);
+  min.step = max.step = 'any';
+  range.append(minField, maxField);
+  content.append(range);
+  for (const control of [min, max]) control.addEventListener('input', () => { min.setCustomValidity(''); max.setCustomValidity(''); });
+  return {
+    focus: min,
+    read() {
+      min.setCustomValidity(min.value || max.value ? '' : 'Enter a minimum or maximum value.');
+      max.setCustomValidity(min.value && max.value && Number(max.value) < Number(min.value) ? 'Maximum must be at least the minimum.' : '');
+      if (min.reportValidity() && max.reportValidity()) return { min: min.value, max: max.value };
+    },
+  };
+}
+
 function valuesEditor(current, content, counts, apply) {
   const selected = new Set(current?.values);
   for (const value of selected) if (!counts.has(value)) counts.set(value, 0);
@@ -131,28 +150,31 @@ function valuesEditor(current, content, counts, apply) {
   return { focus: search, read: () => ({ values: [...selected] }) };
 }
 
-function matcher(key, filter) {
+export function matchesFilter(value, filter) {
   if (filter.values) {
-    const values = new Set(filter.values);
-    return tender => values.has(valueText(tender[key]));
+    return filter.values.includes(valueText(value));
   }
   if (filter.query) {
     const query = searchText(filter.query);
-    return filter.mode === 'exact'
-      ? tender => searchText(tender[key]) === query
-      : tender => searchText(tender[key]).includes(query);
+    return filter.mode === 'exact' ? searchText(value) === query : searchText(value).includes(query);
+  }
+  if (Object.hasOwn(filter, 'min') || Object.hasOwn(filter, 'max')) {
+    return typeof value === 'number' && Number.isFinite(value)
+      && (filter.min === '' || filter.min === undefined || value >= Number(filter.min))
+      && (filter.max === '' || filter.max === undefined || value <= Number(filter.max));
   }
   const from = filter.from ? Date.parse(`${filter.from}T00:00:00+06:00`) : -Infinity;
   const to = filter.to ? Date.parse(`${filter.to}T00:00:00+06:00`) + day : Infinity;
-  return tender => {
-    const date = Date.parse(tender[key]);
-    return date >= from && date < to;
-  };
+  const date = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00+06:00` : value);
+  return date >= from && date < to;
 }
+
+const matcher = (key, filter) => tender => matchesFilter(tender[key], filter);
 
 function describe(filter) {
   if (filter.values) return filter.values.map(value => value || '(Blank)').join(', ');
   if (filter.query) return `${filter.mode === 'exact' ? 'is' : 'contains'} ${filter.query}`;
+  if (Object.hasOwn(filter, 'min')) return `${filter.min === '' ? 'Any' : number.format(Number(filter.min))} to ${filter.max === '' ? 'Any' : number.format(Number(filter.max))} BDT`;
   if (filter.from && filter.to) return `${filter.from} to ${filter.to}`;
   return filter.from ? `from ${filter.from}` : `through ${filter.to}`;
 }
@@ -183,12 +205,14 @@ export function createTableColumns(table, onChange) {
     const rows = matchingRows();
     if (!sort) return rows;
     const { key, direction } = sort;
-    const isDate = columns.get(key).type === 'date';
-    const compare = isDate ? (left, right) => left - right : collator.compare;
+    const type = columns.get(key).type;
+    const isDate = type === 'date';
+    const isNumber = type === 'number';
+    const compare = isDate || isNumber ? (left, right) => left - right : collator.compare;
     const order = direction === 'ascending' ? 1 : -1;
     const entries = rows.map(tender => {
-      const value = isDate ? Date.parse(tender[key]) : valueText(tender[key]);
-      return { tender, value, blank: value === '' || Number.isNaN(value) };
+      const value = isDate ? Date.parse(tender[key]) : isNumber ? tender[key] : valueText(tender[key]);
+      return { tender, value, blank: value === '' || value == null || Number.isNaN(value) };
     });
     entries.sort((left, right) => {
       if (left.blank || right.blank) return Number(left.blank) - Number(right.blank);
@@ -219,13 +243,13 @@ export function createTableColumns(table, onChange) {
   function open(key) {
     const { label, type } = columns.get(key);
     const current = filters.get(key);
-    const editors = { text: textEditor, date: dateEditor };
+    const editors = { text: textEditor, date: dateEditor, number: numberEditor };
     title.textContent = `Filter by ${label}`;
     content.replaceChildren();
     const hint = document.createElement('p');
     hint.className = 'column-filter-hint';
     hint.textContent = complete ? 'Filters and counts apply to the loaded results.'
-      : 'This search is incomplete. Counts cover loaded notices only; more matches may exist. Narrow the search filters or refresh results.';
+      : 'This search is incomplete. Counts cover loaded results only; more matches may exist. Narrow the search filters or refresh results.';
     content.append(hint);
     clear.hidden = !current;
     apply.disabled = false;
@@ -323,7 +347,7 @@ export function createTableColumns(table, onChange) {
       const needsUpdate = reset || Boolean(results.length) !== Boolean(tenders.length);
       tenders = results;
       complete = isComplete;
-      if (reset) filters.clear();
+      if (reset) { filters.clear(); sort = undefined; }
       if (needsUpdate) {
         updateControls();
         updateSortControls();
